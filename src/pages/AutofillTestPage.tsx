@@ -246,6 +246,8 @@ export function AutofillTestPage() {
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
                   <input
                     type="text"
+                    id="fullName"
+                    name="fullName"
                     value={formData.fullName}
                     onChange={e => handleInputChange('fullName', e.target.value)}
                     placeholder="Enter full name"
@@ -263,6 +265,8 @@ export function AutofillTestPage() {
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
                     <input
                       type="email"
+                      id="email"
+                      name="email"
                       value={formData.email}
                       onChange={e => handleInputChange('email', e.target.value)}
                       placeholder="Enter email"
@@ -279,6 +283,8 @@ export function AutofillTestPage() {
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
                     <input
                       type="tel"
+                      id="phone"
+                      name="phone"
                       value={formData.phone}
                       onChange={e => handleInputChange('phone', e.target.value)}
                       placeholder="Enter phone"
@@ -297,6 +303,8 @@ export function AutofillTestPage() {
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
                   <input
                     type="text"
+                    id="address"
+                    name="address"
                     value={formData.address}
                     onChange={e => handleInputChange('address', e.target.value)}
                     placeholder="Enter street address"
@@ -312,6 +320,8 @@ export function AutofillTestPage() {
                   </label>
                   <input
                     type="text"
+                    id="city"
+                    name="city"
                     value={formData.city}
                     onChange={e => handleInputChange('city', e.target.value)}
                     placeholder="City"
@@ -325,6 +335,8 @@ export function AutofillTestPage() {
                   </label>
                   <input
                     type="text"
+                    id="state"
+                    name="state"
                     value={formData.state}
                     onChange={e => handleInputChange('state', e.target.value)}
                     placeholder="State"
@@ -338,6 +350,8 @@ export function AutofillTestPage() {
                   </label>
                   <input
                     type="text"
+                    id="pincode"
+                    name="pincode"
                     value={formData.pincode}
                     onChange={e => handleInputChange('pincode', e.target.value)}
                     placeholder="Pincode"
@@ -359,6 +373,8 @@ export function AutofillTestPage() {
                       <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
                       <input
                         type="text"
+                        id="employer"
+                        name="employer"
                         value={formData.employer}
                         onChange={e => handleInputChange('employer', e.target.value)}
                         placeholder="Employer name"
@@ -373,6 +389,8 @@ export function AutofillTestPage() {
                     </label>
                     <input
                       type="text"
+                      id="designation"
+                      name="designation"
                       value={formData.designation}
                       onChange={e => handleInputChange('designation', e.target.value)}
                       placeholder="Job title"

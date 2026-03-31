@@ -245,6 +245,81 @@ router.get('/fetch/:token', async (req: Request, res: Response): Promise<void> =
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// POST /api/autofill/fetch — PUBLIC endpoint called by the extension
+// Returns only the allowed fields for the given Bearer token
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/fetch', async (req: Request, res: Response): Promise<void> => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            res.status(401).json({ success: false, message: 'No Bearer token provided' });
+            return;
+        }
+
+        const token = authHeader.split(' ')[1];
+        const consent = await prisma.consent.findUnique({
+            where: { consentToken: token },
+        });
+
+        if (!consent) {
+            res.status(404).json({ success: false, message: 'Invalid autofill token' });
+            return;
+        }
+
+        if (consent.status !== 'active') {
+            res.status(403).json({ success: false, message: `Token is ${consent.status}` });
+            return;
+        }
+
+        if (new Date(consent.expiresAt) < new Date()) {
+            await prisma.consent.update({ where: { id: consent.id }, data: { status: 'expired' } });
+            res.status(403).json({ success: false, message: 'Token has expired' });
+            return;
+        }
+
+        const allowedFields = consent.allowedFields ? consent.allowedFields.split(',') : [];
+        const profile = await buildAutofillProfile(consent.userId, allowedFields);
+
+        // Update access tracking
+        await prisma.consent.update({
+            where: { id: consent.id },
+            data: {
+                lastAccessedAt: new Date(),
+                accessCount: { increment: 1 },
+            },
+        });
+
+        await prisma.activityLog.create({
+            data: {
+                userId: consent.userId,
+                eventType: 'consent',
+                title: 'Autofill Data Fetched (Extension)',
+                description: `${consent.institutionName} fetched data via browser extension`,
+                entityName: consent.institutionName,
+                entityType: 'autofill',
+                consentId: consent.id,
+                ipAddress: req.ip,
+            },
+        });
+
+        broadcastToUser(consent.userId, 'autofill_data_fetched', {
+            appName: consent.institutionName,
+            fieldsAccessed: allowedFields.length,
+            via: 'extension'
+        });
+
+        res.json({
+            success: true,
+            source: 'PRISM Identity Vault',
+            appName: consent.institutionName,
+            data: profile,
+        });
+    } catch (err: any) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/autofill/tokens — list all autofill tokens for the user
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/tokens', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {

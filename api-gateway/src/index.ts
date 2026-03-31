@@ -21,8 +21,17 @@ const server = createServer(app);
 const PORT = parseInt(process.env.PORT || '4000');
 
 // ── Middleware ───────────────────────────────────────────────────────────────
+app.use((req, _res, next) => {
+  console.log(`[DEBUG] ${req.method} ${req.url}`);
+  next();
+});
 app.use(cors({
-  origin: process.env.FRONTEND_URL ? [process.env.FRONTEND_URL, 'http://localhost:3000'] : ['http://localhost:5173', 'http://localhost:3000'],
+  origin: [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    /^chrome-extension:\/\//
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 }));
