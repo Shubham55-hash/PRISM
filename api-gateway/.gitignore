@@ -1,0 +1,10 @@
+node_modules/
+dist/
+out.txt
+.env
+.env.*
+!.env.example
+*.db
+*.db-journal
+*.log
+.DS_Store

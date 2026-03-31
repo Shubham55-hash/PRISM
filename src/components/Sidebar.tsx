@@ -9,7 +9,8 @@ import {
   LogOut,
   X,
   Zap,
-  TestTube
+  TestTube,
+  Brain
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link, useLocation } from 'react-router-dom';
@@ -21,6 +22,7 @@ const navItems = [
   { icon: Fingerprint, label: 'Identity', path: '/identity' },
   { icon: FileText, label: 'Documents', path: '/documents' },
   { icon: ShieldCheck, label: 'Consents', path: '/consents' },
+  { icon: Brain, label: 'Life Insights', path: '/insights' },
   { icon: Zap, label: 'Smart Autofill', path: '/autofill' },
   { icon: TestTube, label: 'Test Autofill', path: '/autofill-test' },
   { icon: Settings, label: 'Settings', path: '/settings' },

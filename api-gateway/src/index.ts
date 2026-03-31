@@ -13,6 +13,7 @@ import analyticsRoutes from './routes/analytics';
 import assistantRoutes from './routes/assistant';
 import crisisRoutes from './routes/crisis';
 import autofillRoutes from './routes/autofill';
+import predictionsRoutes from './routes/predictions';
 import { auditLog } from './middleware/audit';
 
 const app = express();
@@ -39,6 +40,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/assistant', assistantRoutes);
 app.use('/api/crisis', crisisRoutes);
 app.use('/api/autofill', autofillRoutes);
+app.use('/api/predictions', predictionsRoutes);
 
 // ── Health Check ─────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', version: '1.0.0', service: 'PRISM API Gateway' }));
