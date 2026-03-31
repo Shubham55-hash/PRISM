@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { FileText, Search, Download, Eye, CheckCircle2, Clock, Trash2, Loader, X, UploadCloud, FileJson, BadgeCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileText, Search, Download, Eye, CheckCircle2, Clock, Trash2, Loader, X, UploadCloud, FileJson, BadgeCheck, ChevronDown, ChevronUp, Zap, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApi } from '../hooks/useApi';
-import { getDocuments, uploadDocument, verifyDocument, deleteDocument, getDownloadUrl } from '../api/documents';
+import { getDocuments, uploadDocument, verifyDocument, deleteDocument, getDownloadUrl, extractDocument, confirmExtraction, importFromDigiLocker } from '../api/documents';
 import { DocumentRowSkeleton } from '../components/Skeleton';
 import { BASE_URL } from '../api/client';
 
@@ -26,12 +26,61 @@ export function DocumentsPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [vcModalData, setVcModalData] = useState<any>(null);
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
+  const [extractingId, setExtractingId] = useState<string | null>(null);
+  const [extractedModal, setExtractedModal] = useState<any>(null);
+  const [importingDigiLocker, setImportingDigiLocker] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data, loading, refetch } = useApi(
     () => getDocuments({ search: search || undefined, type: typeFilter || undefined, page }),
     [search, typeFilter, page]
   );
+
+  const handleExtract = async (docId: string, docName: string) => {
+    setExtractingId(docId);
+    try {
+      const result = await extractDocument(docId);
+      if (result.success && result.data) {
+        setExtractedModal({
+          docId,
+          docName,
+          data: result.data,
+          confidence: result.confidence || 0
+        });
+      }
+    } catch (err: any) {
+      alert('Failed to extract data: ' + err.message);
+    } finally {
+      setExtractingId(null);
+    }
+  };
+
+  const handleConfirmExtraction = async () => {
+    if (!extractedModal) return;
+    try {
+      await confirmExtraction(extractedModal.docId, extractedModal.data);
+      setExtractedModal(null);
+      refetch();
+      alert('Data extracted and profiled updated!');
+    } catch (err: any) {
+      alert('Failed to confirm: ' + err.message);
+    }
+  };
+
+  const handleImportDigiLocker = async () => {
+    setImportingDigiLocker(true);
+    try {
+      const result = await importFromDigiLocker();
+      if (result.success) {
+        refetch();
+        alert(`Imported ${result.data.length} documents from DigiLocker!`);
+      }
+    } catch (err: any) {
+      alert('DigiLocker import failed: ' + err.message);
+    } finally {
+      setImportingDigiLocker(false);
+    }
+  };
 
   const performUpload = async (file: File) => {
     setUploading(true);
@@ -200,9 +249,62 @@ export function DocumentsPage() {
         )}
       </div>
 
+      {/* Extracted Fields Modal */}
+      {extractedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#F5F0E8] rounded-2xl p-8 max-w-2xl w-full shadow-2xl border border-primary/20 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-on-surface">Extracted Fields</h3>
+              <button onClick={() => setExtractedModal(null)} className="text-secondary hover:text-primary">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <p className="text-sm text-secondary mb-6">
+              <Zap className="w-4 h-4 inline mr-2 text-amber-600" />
+              Document: <strong>{extractedModal.docName}</strong> | Confidence: <strong>{(extractedModal.confidence * 100).toFixed(0)}%</strong>
+            </p>
+
+            <div className="space-y-4 mb-8 bg-background p-6 rounded-xl border border-outline-variant/10">
+              {Object.entries(extractedModal.data).map(([key, value]) => (
+                <div key={key}>
+                  <label className="text-xs uppercase tracking-widest font-bold text-outline block mb-1.5">{key}</label>
+                  <input
+                    type="text"
+                    value={String(value || '')}
+                    onChange={(e) => {
+                      setExtractedModal({
+                        ...extractedModal,
+                        data: { ...extractedModal.data, [key]: e.target.value }
+                      });
+                    }}
+                    className="w-full bg-surface-container border border-outline-variant/20 rounded px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 ring-primary/30"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setExtractedModal(null)}
+                className="flex-1 px-4 py-3 rounded-lg border-2 border-outline-variant/20 font-bold text-sm uppercase tracking-widest hover:bg-surface-container transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmExtraction}
+                className="flex-1 px-4 py-3 rounded-lg bg-primary text-on-primary font-bold text-sm uppercase tracking-widest shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+              >
+                <Save className="w-4 h-4" /> Save to Profile
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       <div className="bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/10 overflow-hidden">
-        {/* Search & Filter Bar */}
-        <div className="p-6 border-b border-outline-variant/10 flex gap-4 flex-wrap">
+        {/* Search & Filter Bar with DigiLocker Button */}
+        <div className="p-6 border-b border-outline-variant/10 flex gap-4 flex-wrap items-center">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
             <input
@@ -229,6 +331,14 @@ export function DocumentsPage() {
               <X className="w-3 h-3" /> Clear
             </button>
           )}
+          <button
+            onClick={handleImportDigiLocker}
+            disabled={importingDigiLocker}
+            className="px-4 py-2 bg-primary/10 text-primary rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-primary/20 disabled:opacity-50 transition-colors flex items-center gap-2"
+          >
+            {importingDigiLocker ? <Loader className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+            DigiLocker
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -311,6 +421,16 @@ export function DocumentsPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2 text-primary">
+                            {!extractedModal && (
+                              <button
+                                onClick={() => handleExtract(doc.id, doc.name)}
+                                disabled={extractingId === doc.id}
+                                title="Extract data with AI"
+                                className="p-2 hover:bg-surface-container rounded-full disabled:opacity-50"
+                              >
+                                {extractingId === doc.id ? <Loader className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                              </button>
+                            )}
                             {hasOcr && (
                               <button
                                 onClick={() => setExpandedDocId(isExpanded ? null : doc.id)}

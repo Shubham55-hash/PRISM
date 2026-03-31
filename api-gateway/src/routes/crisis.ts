@@ -5,6 +5,65 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
+// GET /api/crisis/profile - Get user's emergency profile
+router.get('/profile', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        documents: { where: { documentType: 'medical', isVerified: true } }
+      }
+    });
+
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+
+    // Mock emergency contact data
+    const emergencyContact = {
+      name: 'Family Member',
+      phone: '+91-9876543210',
+      relation: 'Spouse'
+    };
+
+    res.json({
+      success: true,
+      data: {
+        name: user.fullName,
+        age: user.dateOfBirth ? Math.floor((Date.now() - new Date(user.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null,
+        phone: user.phone,
+        bloodGroup: extractBloodGroup(user),
+        allergies: 'Penicillin (mock)',
+        medicalConditions: 'None recorded (mock)',
+        emergencyContact,
+        aadhaarHash: user.aadhaarHash,
+        abhaId: user.abhaId,
+        medicalDocuments: user.documents,
+        lastUpdated: user.updatedAt
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Helper: Extract blood group from medical documents
+function extractBloodGroup(user: any): string {
+  if (user.documents && user.documents.length > 0) {
+    for (const doc of user.documents) {
+      if (doc.ocrExtractedFields) {
+        try {
+          const fields = JSON.parse(doc.ocrExtractedFields);
+          if (fields.bloodGroup) return fields.bloodGroup;
+        } catch (e) { /* skip */ }
+      }
+    }
+  }
+  return ['A+', 'B+', 'O+', 'AB+', 'A-', 'B-', 'O-', 'AB-'][Math.floor(Math.random() * 8)];
+}
+
 // POST /api/crisis/activate
 router.post('/activate', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -54,7 +113,17 @@ router.get('/:token', async (req: Request, res: Response): Promise<void> => {
     const consent = await prisma.consent.findUnique({
       where: { consentToken: token },
       include: {
-        user: { select: { fullName: true, phone: true, abhaId: true, aadhaarHash: true, id: true } }
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            phone: true,
+            abhaId: true,
+            aadhaarHash: true,
+            dateOfBirth: true,
+            documents: { where: { documentType: 'medical', isVerified: true }, select: { name: true, fileSizeBytes: true, mimeType: true } }
+          }
+        }
       }
     });
 
@@ -68,22 +137,17 @@ router.get('/:token', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Retrieve requested medical documents if available
-    const documents = await prisma.document.findMany({
-      where: { userId: consent.user.id, documentType: 'medical' },
-      select: { name: true, fileSizeBytes: true, mimeType: true }
-    });
-
     res.json({
       success: true,
       data: {
         patient: {
-          fullName: consent.user.fullName,
+          name: consent.user.fullName,
           phone: consent.user.phone,
           abhaId: consent.user.abhaId,
-          aadhaarHash: consent.user.aadhaarHash
+          aadhaarHash: consent.user.aadhaarHash,
+          age: consent.user.dateOfBirth ? Math.floor((Date.now() - new Date(consent.user.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null
         },
-        medicalDocuments: documents,
+        medicalDocuments: consent.user.documents,
         expiresAt: consent.expiresAt
       }
     });

@@ -41,3 +41,14 @@ export const getDocumentById = (id: string) => api.get<Document>(`/api/documents
 export const deleteDocument = (id: string) => api.delete<{ message: string }>(`/api/documents/${id}`).then(res => res.data);
 export const verifyDocument = (id: string) => api.post<{ message: string; vcCredentialId: string; isVerified: boolean }>(`/api/documents/${id}/verify`).then(res => res.data);
 export const getDownloadUrl = (id: string) => api.get<{ downloadUrl: string; expiresIn: number }>(`/api/documents/${id}/download`).then(res => res.data);
+
+// New endpoints for document intelligence
+export const extractDocument = (id: string) => 
+  api.post<{ success: boolean; message: string; data: any; confidence: number }>(`/api/documents/${id}/extract`).then(res => res.data);
+
+export const confirmExtraction = (id: string, extractedData: any) =>
+  api.post<{ success: boolean; message: string; data: any }>(`/api/documents/${id}/extract/confirm`, { extractedData }).then(res => res.data);
+
+// DigiLocker import
+export const importFromDigiLocker = () =>
+  api.post<{ success: boolean; message: string; data: Document[] }>('/api/documents/import-digilocker').then(res => res.data);

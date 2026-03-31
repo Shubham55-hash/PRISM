@@ -4,66 +4,151 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
-// POST /api/assistant/suggest
+// Rule-based suggestions engine
+async function generateSuggestions(userId: string): Promise<Array<{ title: string; description: string; priority: 'high' | 'medium' | 'low'; icon: string }>> {
+  const suggestions: Array<{ title: string; description: string; priority: 'high' | 'medium' | 'low'; icon: string }> = [];
+  
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      documents: { where: { isVerified: true } },
+      consents: { where: { status: 'active' } }
+    }
+  });
+
+  if (!user) return suggestions;
+
+  // Calculate age if DOB exists
+  let age = 0;
+  if (user.dateOfBirth) {
+    const dob = new Date(user.dateOfBirth);
+    age = Math.floor((Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+  }
+
+  const docTypes = user.documents.map(d => d.documentType).filter(Boolean);
+  const hasIdentity = docTypes.includes('identity');
+  const hasFinancial = docTypes.includes('financial');
+  const hasEducation = docTypes.includes('education');
+  const hasEmployment = docTypes.includes('employment');
+  const hasMedical = docTypes.includes('medical');
+
+  // Rule 1: Identity completion check
+  if (!hasIdentity) {
+    suggestions.push({
+      title: 'Complete Your Identity Profile',
+      description: 'Upload identification documents (Aadhaar, PAN, or Passport) to unlock full platform access.',
+      priority: 'high',
+      icon: '🪪'
+    });
+  }
+
+  // Rule 2: Financial documentation for working professionals
+  if (hasEmployment && !hasFinancial && age > 25) {
+    suggestions.push({
+      title: 'Prepare Financial Documents',
+      description: 'Your employment history is verified. Upload salary slips or tax returns to build credit credibility.',
+      priority: 'high',
+      icon: '💰'
+    });
+  }
+
+  // Rule 3: Health insurance recommendation
+  if (age >= 25 && !hasMedical) {
+    suggestions.push({
+      title: 'Add Medical Information',
+      description: 'Maintain your health records including blood group and medical history for emergencies.',
+      priority: 'medium',
+      icon: '🏥'
+    });
+  }
+
+  // Rule 4: DigiLocker integration
+  if (!user.digilockerLinked && user.documents.length >= 2) {
+    suggestions.push({
+      title: 'Link Your DigiLocker',
+      description: 'Sync official documents directly from your DigiLocker vault to PRISM.',
+      priority: 'medium',
+      icon: '🔗'
+    });
+  }
+
+  // Rule 5: Consent management
+  if (user.consents.length === 0 && user.documents.length > 2) {
+    suggestions.push({
+      title: 'Grant Selective Consents',
+      description: 'You have verified documents ready. Grant consents to institutions with fine-grained control.',
+      priority: 'medium',
+      icon: '✅'
+    });
+  }
+
+  // Rule 6: Crisis profile setup
+  if (!user.aadhaarHash) {
+    suggestions.push({
+      title: 'Enable Emergency Access',
+      description: 'Set up crisis mode to allow emergency responders quick access to vital information.',
+      priority: 'low',
+      icon: '🚑'
+    });
+  }
+
+  // Rule 7: Trust score improvement
+  if (user.trustScore < 50 && user.documents.length >= 3) {
+    suggestions.push({
+      title: 'Boost Your Trust Score',
+      description: `Your trust score is ${user.trustScore}/100. Verify more documents to increase credibility.`,
+      priority: 'low',
+      icon: '⭐'
+    });
+  }
+
+  // Rule 8: Education verification
+  if (hasEmployment && !hasEducation && age > 22) {
+    suggestions.push({
+      title: 'Verify Your Educational Background',
+      description: 'Add your degree certificates to build a complete professional profile.',
+      priority: 'low',
+      icon: '🎓'
+    });
+  }
+
+  return suggestions;
+}
+
+// GET /api/assistant/suggestions
+router.get('/suggestions', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const suggestions = await generateSuggestions(userId);
+
+    res.json({
+      success: true,
+      data: suggestions,
+      count: suggestions.length
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/assistant/suggest (legacy endpoint - kept for compatibility)
 router.post('/suggest', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
-    const documents = await prisma.document.findMany({ 
-      where: { userId, isVerified: true },
-      select: { name: true, documentType: true }
-    });
-    const consents = await prisma.consent.findMany({ 
-      where: { userId, status: 'active' },
-      select: { institutionName: true, purpose: true }
-    });
-
-    const context = `Verified Documents: ${documents.map(d => d.documentType || d.name).join(', ') || 'None'}. Active Consents: ${consents.map(c => c.institutionName).join(', ') || 'None'}.`;
-
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      res.json({
-        success: true,
-        data: {
-          suggestion: "Mock suggestion: Prepare your Unified Medical Profile package based on your recent health records.",
-          confidence: 0.88
-        }
-      });
-      return;
-    }
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { 
-            role: 'system', 
-            content: "You are PRISM's Predictive Life Assistant. Based on the user's verified documents and life stage, suggest the next credential bundle they should prepare. Be concise and actionable." 
-          },
-          { role: 'user', content: context }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API Error: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    const suggestionContent = result.choices[0]?.message?.content || "Gather your financial documents.";
+    const suggestions = await generateSuggestions(userId);
+    
+    // Return primary suggestion
+    const topSuggestion = suggestions.find(s => s.priority === 'high') || suggestions[0];
 
     res.json({
       success: true,
       data: {
-        suggestion: suggestionContent,
-        confidence: 0.92 // Mocked confidence
+        suggestion: topSuggestion?.title || 'Keep your profile updated',
+        description: topSuggestion?.description,
+        confidence: 0.92,
+        allSuggestions: suggestions
       }
     });
-
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -73,31 +158,79 @@ router.post('/suggest', authenticate, async (req: AuthRequest, res: Response): P
 router.post('/predict-stage', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
-    const documents = await prisma.document.findMany({ where: { userId } });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { documents: true }
+    });
 
-    let predictedStage = 'early_career';
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+
+    const docTypes = user.documents.map(d => d.documentType);
+    let stage = 'early_career';
     let title = 'Career Building';
-    let description = 'Based on your recent documents, you appear to be building your employment portfolio.';
-    const confidence = 0.85;
+    let description = 'Focus on establishing your professional identity.';
+    let icon = '🚀';
+    const bundle = ['identity', 'education'];
 
-    if (documents.some(d => d.documentType === 'financial')) {
-        predictedStage = 'financial_maturity';
+    // Age-based stage determination
+    if (user.dateOfBirth) {
+      const age = Math.floor((Date.now() - new Date(user.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+      
+      if (age < 25) {
+        stage = 'student';
+        title = 'Student Life';
+        description = 'Build your education and early professional portfolio.';
+        icon = '📚';
+        bundle.push('employment');
+      } else if (age < 35) {
+        if (docTypes.includes('financial')) {
+          stage = 'early_professional';
+          title = 'Professional Growth';
+          description = 'You are building financial stability and career progression.';
+          icon = '💼';
+          bundle.push('financial', 'employment');
+        }
+      } else if (age < 50) {
+        stage = 'established';
         title = 'Financial Independence';
-        description = 'Your documentation indicates preparation for major financial milestones, like loans or investments.';
+        description = 'Focus on wealth creation and family security.';
+        icon = '🏠';
+        bundle.push('financial', 'medical', 'legal');
+      } else {
+        stage = 'retirement';
+        title = 'Retirement Planning';
+        description = 'Secure your estate and healthcare preferences.';
+        icon = '🌅';
+        bundle.push('medical', 'legal', 'financial');
+      }
     }
 
     const prediction = await prisma.lifeStagePrediction.create({
       data: {
         userId,
-        predictedStage,
+        predictedStage: stage,
         title,
         description,
-        confidence,
-        suggestedBundle: JSON.stringify(['identity', 'financial'])
+        confidence: 0.85,
+        suggestedBundle: JSON.stringify(bundle)
       }
     });
 
-    res.status(201).json({ success: true, message: 'Life stage predicted successfully', data: prediction });
+    res.status(201).json({
+      success: true,
+      message: 'Life stage predicted',
+      data: {
+        stage: prediction.predictedStage,
+        title: prediction.title,
+        description: prediction.description,
+        icon,
+        suggestedBundle: bundle,
+        confidence: prediction.confidence
+      }
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

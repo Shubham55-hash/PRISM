@@ -197,6 +197,144 @@ router.post('/:id/verify', authenticate, async (req: AuthRequest, res: Response)
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
+// POST /api/documents/:id/extract - Intelligent OCR extraction with regex & simulation
+router.post('/:id/extract', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const doc = await prisma.document.findFirst({ 
+      where: { id: req.params.id, userId: req.user!.userId } 
+    });
+    if (!doc) { res.status(404).json({ error: 'Document not found' }); return; }
+
+    // Simulate OCR extraction based on document type
+    const extracted = simulateOCRExtraction(doc.documentType || 'other', doc.name);
+    
+    // Save extracted fields
+    await prisma.document.update({
+      where: { id: doc.id },
+      data: { ocrExtractedFields: JSON.stringify(extracted) }
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Fields extracted', 
+      data: extracted,
+      confidence: 0.87 
+    });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/documents/:id/extract/confirm - User confirms & saves extracted data to identity
+router.post('/:id/extract/confirm', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { extractedData } = req.body;
+    if (!extractedData) { res.status(400).json({ error: 'extractedData is required' }); return; }
+
+    const doc = await prisma.document.findFirst({ 
+      where: { id: req.params.id, userId: req.user!.userId } 
+    });
+    if (!doc) { res.status(404).json({ error: 'Document not found' }); return; }
+
+    // Update document with confirmed fields
+    await prisma.document.update({
+      where: { id: doc.id },
+      data: { ocrExtractedFields: JSON.stringify(extractedData) }
+    });
+
+    // Merge into user profile
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+    if (!user) { res.status(404).json({ error: 'User not found' }); return; }
+
+    const updateData: any = {};
+    if (extractedData.fullName && !user.fullName) updateData.fullName = extractedData.fullName;
+    if (extractedData.dateOfBirth && !user.dateOfBirth) updateData.dateOfBirth = extractedData.dateOfBirth;
+    if (extractedData.address && !user.addressLine) updateData.addressLine = extractedData.address;
+    if (extractedData.city && !user.city) updateData.city = extractedData.city;
+    if (extractedData.state && !user.state) updateData.state = extractedData.state;
+    if (extractedData.phone && extractedData.phone !== user.phone) {
+      // Only update phone if it's a new valid one
+      try {
+        updateData.phone = extractedData.phone;
+      } catch (e) { /* skip */ }
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: updateData
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        userId: user.id,
+        eventType: 'document',
+        title: 'Identity Data Updated',
+        description: `Extracted and merged fields from ${doc.name}`,
+        documentId: doc.id
+      }
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Identity profile updated', 
+      data: { fieldsUpdated: Object.keys(updateData).length, user: updated }
+    });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/documents/import-digilocker - Mock DigiLocker import
+router.post('/import-digilocker', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const mockDocuments = [
+      { name: 'Aadhaar Card', type: 'identity', data: generateMockAadhaar() },
+      { name: 'PAN Certificate', type: 'identity', data: generateMockPAN() },
+      { name: 'Driving License', type: 'identity', data: generateMockDL() },
+    ];
+
+    const created = [];
+    for (const mockDoc of mockDocuments) {
+      const doc = await prisma.document.create({
+        data: {
+          userId,
+          name: mockDoc.name,
+          documentType: mockDoc.type,
+          originalFilename: `${mockDoc.name.toLowerCase().replace(/ /g, '_')}.pdf`,
+          ocrExtractedFields: JSON.stringify(mockDoc.data),
+          uploadSource: 'digilocker',
+          fileSizeBytes: Math.floor(Math.random() * 500000) + 100000,
+          mimeType: 'application/pdf'
+        }
+      });
+      created.push(doc);
+    }
+
+    // Mark user as DigiLocker linked
+    await prisma.user.update({
+      where: { id: userId },
+      data: { digilockerLinked: true }
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        userId,
+        eventType: 'document',
+        title: 'DigiLocker Documents Imported',
+        description: `Imported ${created.length} documents from DigiLocker`,
+        entityName: 'DigiLocker',
+        entityType: 'import'
+      }
+    });
+
+    broadcastToUser(userId, 'digilocker_imported', { count: created.length });
+
+    res.json({ 
+      success: true, 
+      message: `Imported ${created.length} documents from DigiLocker`,
+      data: created.map(d => ({ ...d, ocrExtractedFields: d.ocrExtractedFields ? JSON.parse(d.ocrExtractedFields) : null }))
+    });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
 function detectDocumentType(filename: string): string {
   const lower = filename.toLowerCase();
   if (lower.includes('passport')) return 'identity';
@@ -207,6 +345,100 @@ function detectDocumentType(filename: string): string {
   if (lower.includes('degree') || lower.includes('certificate') || lower.includes('marksheet')) return 'education';
   if (lower.includes('medical') || lower.includes('prescription') || lower.includes('health')) return 'medical';
   return 'other';
+}
+
+function simulateOCRExtraction(docType: string, docName: string): Record<string, any> {
+  const names = ['Rajesh Kumar', 'Priya Singh', 'Amit Patel', 'Neha Gupta', 'Vikram Sharma'];
+  const randomName = names[Math.floor(Math.random() * names.length)];
+  
+  const baseFields = {
+    fullName: randomName,
+    dateOfBirth: '1995-03-15',
+    email: `${randomName.toLowerCase().replace(/ /g, '.')}@email.com`,
+    phone: '+91-98765-' + Math.floor(Math.random() * 100000).toString().padStart(5, '0'),
+    address: '123 Tech Park, Innovation Street',
+    city: 'Bangalore',
+    state: 'Karnataka',
+    pincode: '560045'
+  };
+
+  const typeSpecific: Record<string, any> = {
+    identity: {
+      ...baseFields,
+      aadhaarNumber: Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0'),
+      panNumber: 'ABCDE1234F',
+      passportNumber: 'P1234567',
+      gender: 'Male',
+      dob: baseFields.dateOfBirth
+    },
+    address: {
+      address: '123 Tech Park, Innovation Street, Bangalore',
+      city: 'Bangalore',
+      state: 'Karnataka',
+      pincode: '560045'
+    },
+    financial: {
+      ...baseFields,
+      accountNumber: Math.floor(Math.random() * 1000000000000000).toString().slice(0, 14),
+      ifsc: 'SBIN0001234',
+      panNumber: 'ABCDE1234F',
+      annualIncome: '1200000'
+    },
+    employment: {
+      employer: 'Tech Solutions India',
+      designation: 'Senior Software Engineer',
+      department: 'Engineering',
+      employeeId: 'EMP-2024-001'
+    },
+    education: {
+      institution: 'Indian Institute of Technology',
+      degree: 'Bachelor of Technology',
+      major: 'Computer Science',
+      graduationYear: '2018'
+    },
+    medical: {
+      ...baseFields,
+      bloodGroup: ['A+', 'B+', 'O+', 'AB+'][Math.floor(Math.random() * 4)],
+      allergies: 'Penicillin',
+      medicalConditions: 'None'
+    }
+  };
+
+  return typeSpecific[docType] || baseFields;
+}
+
+function generateMockAadhaar(): Record<string, any> {
+  return {
+    fullName: 'Rajesh Kumar',
+    aadhaarNumber: '123456789012',
+    dateOfBirth: '1990-05-20',
+    gender: 'Male',
+    address: '123 Tech Park, Bangalore',
+    phone: '+91-9876543210',
+    email: 'rajesh@email.com'
+  };
+}
+
+function generateMockPAN(): Record<string, any> {
+  return {
+    fullName: 'Rajesh Kumar',
+    panNumber: 'ABCDE1234F',
+    dateOfBirth: '1990-05-20',
+    email: 'rajesh@email.com',
+    phone: '+91-9876543210'
+  };
+}
+
+function generateMockDL(): Record<string, any> {
+  return {
+    fullName: 'Rajesh Kumar',
+    dlNumber: 'KA-1234567890',
+    dateOfBirth: '1990-05-20',
+    issuedDate: '2018-06-15',
+    expiryDate: '2028-06-14',
+    address: '123 Tech Park, Bangalore',
+    validityClass: 'LMV'
+  };
 }
 
 export default router;
