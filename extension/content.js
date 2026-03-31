@@ -116,7 +116,8 @@
   // Listen for manual trigger from popup
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "TRIGGER_AUTOFILL") {
-      console.log("[PRISM Autofill] Manual trigger received.");
+      console.log("[PRISM Autofill] Manual trigger received — clearing cache for fresh fetch.");
+      autofillData = null; // Always re-fetch on manual trigger
       runAutofill();
     } else if (msg.type === "GET_TOKEN_FROM_PAGE") {
       // Extract token from localStorage if available

@@ -22,11 +22,9 @@ async function buildAutofillProfile(userId: string, allowedFields: string[]) {
 
     if (!user) return null;
 
-    // Base profile fields
+    // Base profile fields (no email/phone — privacy)
     const fullProfile: Record<string, any> = {
         fullName: user.fullName,
-        email: user.email,
-        phone: user.phone,
         dateOfBirth: user.dateOfBirth,
         address: user.addressLine,
         city: user.city,
@@ -44,8 +42,6 @@ async function buildAutofillProfile(userId: string, allowedFields: string[]) {
 
                 if (docType === 'identity') {
                     if (ocr.aadhaarNumber) fullProfile['aadhaarNumber'] = ocr.aadhaarNumber;
-                    if (ocr.panNumber) fullProfile['panNumber'] = ocr.panNumber;
-                    if (ocr.passportNumber) fullProfile['passportNumber'] = ocr.passportNumber;
                     if (ocr.dob) fullProfile['dateOfBirth'] = fullProfile['dateOfBirth'] || ocr.dob;
                     if (ocr.gender) fullProfile['gender'] = ocr.gender;
                 }
@@ -75,11 +71,7 @@ async function buildAutofillProfile(userId: string, allowedFields: string[]) {
         }
     }
 
-    // DigiLocker mock fields
-    if (user.digilockerLinked) {
-        fullProfile['digilockerLinked'] = true;
-        fullProfile['aadhaarVerified'] = !!user.aadhaarHash;
-    }
+
 
     // Filter to only allowed fields
     const filtered: Record<string, any> = {};
@@ -99,11 +91,10 @@ async function buildAutofillProfile(userId: string, allowedFields: string[]) {
 router.get('/profile', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const ALL_FIELDS = [
-            'fullName', 'email', 'phone', 'dateOfBirth', 'address', 'city', 'state',
-            'pincode', 'prismId', 'abhaId', 'aadhaarNumber', 'panNumber', 'passportNumber',
+            'fullName', 'dateOfBirth', 'address', 'city', 'state',
+            'pincode', 'prismId', 'abhaId', 'aadhaarNumber',
             'gender', 'bankAccountNumber', 'ifscCode', 'annualIncome', 'educationInstitution',
             'degree', 'graduationYear', 'employer', 'designation', 'bloodGroup',
-            'digilockerLinked', 'aadhaarVerified',
         ];
         const profile = await buildAutofillProfile(req.user!.userId, ALL_FIELDS);
         res.json({ success: true, data: profile });

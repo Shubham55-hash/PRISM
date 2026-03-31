@@ -11,6 +11,7 @@ import {
   getAutofillProfile, getAutofillTokens, createAutofillToken, revokeAutofillToken,
   AutofillToken, AutofillProfile,
 } from '../api/autofill';
+import { identityApi } from '../api/identity';
 import { Skeleton } from '../components/Skeleton';
 
 // ─── Field definitions ────────────────────────────────────────────────────────
@@ -20,8 +21,6 @@ const FIELD_GROUPS = [
     icon: User,
     fields: [
       { value: 'fullName', label: 'Full Name' },
-      { value: 'email', label: 'Email Address' },
-      { value: 'phone', label: 'Phone Number' },
       { value: 'dateOfBirth', label: 'Date of Birth' },
       { value: 'gender', label: 'Gender' },
     ],
@@ -41,8 +40,6 @@ const FIELD_GROUPS = [
     icon: CreditCard,
     fields: [
       { value: 'aadhaarNumber', label: 'Aadhaar Number' },
-      { value: 'panNumber', label: 'PAN Number' },
-      { value: 'passportNumber', label: 'Passport Number' },
       { value: 'abhaId', label: 'ABHA ID' },
     ],
   },
@@ -97,9 +94,32 @@ const FIELD_ICONS: Record<string, React.ElementType> = {
 const FIELD_LABELS: Record<string, string> = Object.fromEntries(ALL_FIELDS.map(f => [f.value, f.label]));
 
 // ─── ProfileCard ─────────────────────────────────────────────────────────────
-function ProfileDataCard({ profile }: { profile: AutofillProfile }) {
+function ProfileDataCard({ profile, onUpdate }: { profile: AutofillProfile; onUpdate: () => void }) {
   const [showSensitive, setShowSensitive] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<AutofillProfile>>({});
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await identityApi.updateIdentity({
+        email: editForm.email,
+        phone: editForm.phone,
+        city: editForm.city,
+        state: editForm.state,
+        dateOfBirth: editForm.dateOfBirth ? new Date(editForm.dateOfBirth).toISOString() : undefined,
+      });
+      await onUpdate();
+      setIsEditing(false);
+    } catch (err: any) {
+      alert('Failed to save: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const sensitiveFields = ['aadhaarNumber', 'panNumber', 'passportNumber', 'bankAccountNumber', 'ifscCode'];
   const entries = Object.entries(profile).filter(([, v]) => v !== undefined && v !== null && v !== false);
@@ -123,40 +143,85 @@ function ProfileDataCard({ profile }: { profile: AutofillProfile }) {
           <span className="font-bold text-sm text-on-surface uppercase tracking-widest">Available Data</span>
           <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">{entries.length} fields</span>
         </div>
-        <button
-          onClick={() => setShowSensitive(s => !s)}
-          className="flex items-center gap-1.5 text-xs font-bold text-secondary hover:text-primary transition-colors"
-        >
-          {showSensitive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-          {showSensitive ? 'Hide Sensitive' : 'Show Sensitive'}
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => {
+              if (!isEditing) setEditForm({ email: profile.email, phone: profile.phone, city: profile.city, state: profile.state, dateOfBirth: profile.dateOfBirth });
+              setIsEditing(!isEditing);
+            }}
+            className="text-primary hover:text-primary/80 font-bold text-xs uppercase tracking-widest bg-primary/10 hover:bg-primary/20 transition-colors px-3 py-1.5 rounded-lg"
+          >
+            {isEditing ? 'Cancel' : 'Edit Info'}
+          </button>
+          <button
+            onClick={() => setShowSensitive(s => !s)}
+            className="flex items-center gap-1.5 text-xs font-bold text-secondary hover:text-primary transition-colors"
+          >
+            {showSensitive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            {showSensitive ? 'Hide Sensitive' : 'Show Sensitive'}
+          </button>
+        </div>
       </div>
 
       <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-2">
-        {visible.map(([key, value]) => {
-          const Icon = FIELD_ICONS[key] || FileText;
-          const isSensitive = sensitiveFields.includes(key);
-          const display = typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value);
-
-          return (
-            <div key={key} className="flex items-start gap-2 bg-background rounded-lg px-3 py-2.5 border border-outline-variant/10">
-              <Icon className="w-3.5 h-3.5 text-primary mt-0.5 flex-shrink-0" />
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold text-secondary uppercase tracking-wider truncate">
-                  {FIELD_LABELS[key] || key}
-                </p>
-                <p className="text-xs font-medium text-on-surface mt-0.5 truncate">
-                  {isSensitive && !showSensitive
-                    ? '•'.repeat(Math.min(display.length, 8))
-                    : display}
-                </p>
+        {isEditing ? (
+          <div className="col-span-2 md:col-span-3 space-y-4 p-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] uppercase text-secondary font-bold tracking-wider mb-1">Email Address</label>
+                <input type="email" value={editForm.email || ''} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className="w-full bg-background border border-outline-variant/30 rounded-lg p-3 text-sm focus:border-primary focus:ring-1 outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase text-secondary font-bold tracking-wider mb-1">Phone Number</label>
+                <input type="text" value={editForm.phone || ''} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} className="w-full bg-background border border-outline-variant/30 rounded-lg p-3 text-sm focus:border-primary focus:ring-1 outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase text-secondary font-bold tracking-wider mb-1">City</label>
+                <input type="text" value={editForm.city || ''} onChange={e => setEditForm({ ...editForm, city: e.target.value })} className="w-full bg-background border border-outline-variant/30 rounded-lg p-3 text-sm focus:border-primary focus:ring-1 outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase text-secondary font-bold tracking-wider mb-1">State</label>
+                <input type="text" value={editForm.state || ''} onChange={e => setEditForm({ ...editForm, state: e.target.value })} className="w-full bg-background border border-outline-variant/30 rounded-lg p-3 text-sm focus:border-primary focus:ring-1 outline-none" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-[10px] uppercase text-secondary font-bold tracking-wider mb-1">Date of Birth</label>
+                <input type="date" value={editForm.dateOfBirth?.split('T')[0] || ''} onChange={e => setEditForm({ ...editForm, dateOfBirth: e.target.value })} className="w-full bg-background border border-outline-variant/30 rounded-lg p-3 text-sm focus:border-primary focus:ring-1 outline-none" />
               </div>
             </div>
-          );
-        })}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full bg-primary text-on-primary font-bold tracking-widest text-xs uppercase py-3 rounded-lg flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 transition-all mt-4"
+            >
+              {saving ? <Loader className="w-4 h-4 animate-spin" /> : 'Save Changes'}
+            </button>
+          </div>
+        ) : (
+          visible.map(([key, value]) => {
+            const Icon = FIELD_ICONS[key] || FileText;
+            const isSensitive = sensitiveFields.includes(key);
+            const display = typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value);
+
+            return (
+              <div key={key} className="flex items-start gap-2 bg-background rounded-lg px-3 py-2.5 border border-outline-variant/10">
+                <Icon className="w-3.5 h-3.5 text-primary mt-0.5 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-secondary uppercase tracking-wider truncate">
+                    {FIELD_LABELS[key] || key}
+                  </p>
+                  <p className="text-xs font-medium text-on-surface mt-0.5 truncate">
+                    {isSensitive && !showSensitive
+                      ? '•'.repeat(Math.min(display.length, 8))
+                      : display}
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
-      {entries.length > 8 && (
+      {!isEditing && entries.length > 8 && (
         <button
           onClick={() => setExpanded(e => !e)}
           className="w-full py-3 text-xs font-bold text-secondary hover:text-primary transition-colors border-t border-outline-variant/10 flex items-center justify-center gap-1"
@@ -288,7 +353,7 @@ function TokenCard({ token, onRevoke }: { token: AutofillToken; onRevoke: (id: s
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function AutofillPage() {
-  const { data: profile, loading: profileLoading } = useApi(() => getAutofillProfile(), []);
+  const { data: profile, loading: profileLoading, refetch: refetchProfile } = useApi(() => getAutofillProfile(), []);
   const { data: tokens, loading: tokensLoading, refetch } = useApi(() => getAutofillTokens(), []);
 
   // Modal state
@@ -545,7 +610,7 @@ export function AutofillPage() {
             {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
           </div>
         ) : (
-          <ProfileDataCard profile={profile || {}} />
+          <ProfileDataCard profile={profile || {}} onUpdate={refetchProfile} />
         )}
       </section>
 
@@ -584,30 +649,7 @@ export function AutofillPage() {
         </section>
       )}
 
-      {/* API Usage section — for developers */}
-      <section className="bg-[#1C1A17] rounded-2xl p-6 text-white">
-        <div className="flex items-center gap-2 mb-4">
-          <ExternalLink className="w-4 h-4 text-primary" />
-          <h3 className="font-bold uppercase tracking-widest text-xs text-primary">For Developers / External Apps</h3>
-        </div>
-        <p className="text-xs text-white/60 mb-4">Any external form or app can fetch your data by calling this endpoint with your autofill token:</p>
-        <pre className="bg-white/5 rounded-xl p-4 text-xs font-mono text-green-400 overflow-x-auto whitespace-pre-wrap break-all">
-{`GET https://your-prism-domain.com/api/autofill/fetch/<YOUR_TOKEN>
 
-// Response:
-{
-  "success": true,
-  "source": "PRISM Identity Vault",
-  "appName": "Your App Name",
-  "data": {
-    "fullName": "Shubham Shah",
-    "email": "shubham@example.com",
-    "panNumber": "ABCDE1234F",
-    ...
-  }
-}`}
-        </pre>
-      </section>
     </div>
   );
 }

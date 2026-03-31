@@ -21,7 +21,7 @@ function safeUser(u: {
   id: string; prismId: string; fullName: string; displayName: string | null;
   email: string; phone: string; trustScore: number; securityTier: number;
   city: string | null; state: string | null; profilePhotoUrl: string | null;
-  biometricStatus: string; digilockerLinked: boolean; createdAt: Date;
+  biometricStatus: string; createdAt: Date;
 }) {
   return {
     id: u.id,
@@ -36,7 +36,6 @@ function safeUser(u: {
     state: u.state,
     profilePhotoUrl: u.profilePhotoUrl,
     biometricStatus: u.biometricStatus,
-    digilockerLinked: u.digilockerLinked,
     createdAt: u.createdAt,
   };
 }

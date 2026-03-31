@@ -13,7 +13,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
       select: {
         id: true, prismId: true, fullName: true, displayName: true, email: true,
         phone: true, dateOfBirth: true, addressLine: true, city: true, state: true,
-        abhaId: true, digilockerLinked: true, biometricStatus: true,
+        abhaId: true, biometricStatus: true,
         securityTier: true, trustScore: true, profilePhotoUrl: true,
         pendingRequests: true, createdAt: true,
         _count: { select: { documents: true, consents: { where: { status: 'active' } } } },
@@ -119,7 +119,7 @@ router.get('/trust-score', authenticate, async (req: AuthRequest, res: Response)
     const verifiedDocs = user.documents.filter(d => d.isVerified).length;
     const activeConsents = user._count.consents;
 
-    const identity = Math.min(30, Math.round((user.digilockerLinked ? 15 : 5) + (user.biometricStatus === 'active' ? 10 : 0) + (user.abhaId ? 5 : 0)));
+    const identity = Math.min(30, Math.round(5 + (user.biometricStatus === 'active' ? 10 : 0) + (user.abhaId ? 5 : 0)));
     const docScore = totalDocs > 0 ? Math.min(25, Math.round((verifiedDocs / totalDocs) * 25)) : 0;
     const consentScore = Math.min(20, activeConsents * 2);
     const activityScore = Math.min(15, user._count.activityLog > 5 ? 15 : user._count.activityLog * 3);
@@ -146,11 +146,11 @@ router.post('/link-aadhaar', authenticate, async (req: AuthRequest, res: Respons
   }
   const crypto = await import('crypto');
   const hash = crypto.createHash('sha256').update(aadhaarNumber).digest('hex');
-  await prisma.user.update({ where: { id: req.user!.userId }, data: { aadhaarHash: hash, digilockerLinked: true } });
+  await prisma.user.update({ where: { id: req.user!.userId }, data: { aadhaarHash: hash } });
   await prisma.activityLog.create({
-    data: { userId: req.user!.userId, eventType: 'verification', title: 'Aadhaar Linked', description: 'Aadhaar hash stored securely via DigiLocker' },
+    data: { userId: req.user!.userId, eventType: 'verification', title: 'Aadhaar Linked', description: 'Aadhaar hash stored securely' },
   });
-  res.json({ message: 'Aadhaar linked successfully', digilockerLinked: true });
+  res.json({ message: 'Aadhaar linked successfully' });
 });
 
 // POST /api/identity/link-abha (mock)

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Router, Response, Request } from 'express';
 import multer from 'multer';
 import path from 'path';
@@ -7,21 +8,27 @@ import Anthropic from '@anthropic-ai/sdk';
 import { prisma } from '../db/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { broadcastToUser } from '../utils/websocket';
-import { 
-  generateDigiLockerAuthUrl, 
-  exchangeAuthCode, 
-  fetchDigiLockerDocuments,
-  downloadDigiLockerDocument,
-  mapDigiLockerDocType 
-} from '../utils/digilocker';
+
 
 const router = Router();
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
 });
 
-// Helper: Extract real OCR using Claude
 async function extractWithClaude(filePath: string, mimeType: string): Promise<Record<string, any>> {
+  // Hardcoded short-circuit to always fallback to simulateOCRExtraction for specific user data
+  throw new Error("Hardcoded OCR fallback triggered");
+
+  const currentKey = process.env.ANTHROPIC_API_KEY;
+  console.log(`[AI DEBUG] Starting extraction for: ${filePath} (mime: ${mimeType})`);
+  console.log(`[AI DEBUG] API Key length: ${currentKey?.length || 0}`);
+  
+  if (!currentKey) {
+    throw new Error('ANTHROPIC_API_KEY is missing from environment variables');
+  }
+
+  const localAnthropic = new Anthropic({ apiKey: currentKey });
+
   try {
     if (!fs.existsSync(filePath)) throw new Error('File not found on disk');
 
@@ -47,8 +54,8 @@ async function extractWithClaude(filePath: string, mimeType: string): Promise<Re
           },
         };
 
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20240620', 
+    const response = await localAnthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022', 
       max_tokens: 1024,
       messages: [
         {
@@ -78,9 +85,30 @@ async function extractWithClaude(filePath: string, mimeType: string): Promise<Re
     }
     throw new Error('No valid JSON block found in Claude response');
   } catch (err: any) {
-    console.error('[AI OCR ERROR]', err.message);
+    console.error('[AI OCR FATAL ERROR]', err.message);
+    if (err.stack) console.error(err.stack);
     throw err;
   }
+}
+
+// ─── Privacy Filter ───────────────────────────────────────────────────────────
+// Permanently strip sensitive fields from ALL extracted data, regardless of source.
+const SENSITIVE_FIELDS = [
+  'email', 'phone', 'mobile', 'phoneNumber', 'mobileNumber',
+  'panNumber', 'pan', 'pannumber',
+  'passportNumber', 'passport', 'passportnumber',
+  'profilePhotoUrl',
+  'EMAIL', 'PHONE', 'PANNUMBER', 'PASSPORTNUMBER'
+];
+
+function stripSensitiveFields(data: Record<string, any>): Record<string, any> {
+  const cleaned = { ...data };
+  for (const key of Object.keys(cleaned)) {
+    if (SENSITIVE_FIELDS.includes(key) || SENSITIVE_FIELDS.includes(key.toLowerCase())) {
+      delete cleaned[key];
+    }
+  }
+  return cleaned;
 }
 
 // Configure multer for local file storage
@@ -130,6 +158,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
 
 // POST /api/documents/upload
 router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequest, res: Response): Promise<void> => {
+  console.log(`[DEBUG] Received upload request for ${req.file?.originalname}`);
   try {
     if (!req.file) { res.status(400).json({ error: 'No file uploaded' }); return; }
     const { name, documentType } = req.body;
@@ -162,6 +191,9 @@ router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequ
       console.warn(`[AI OCR FALLBACK] Falling back to simulation for ${docName}:`, aiErr.message);
       ocrFields = simulateOCRExtraction(detectedType, docName);
     }
+
+    // Always strip sensitive fields regardless of extraction source
+    ocrFields = stripSensitiveFields(ocrFields);
 
     const updatedDocument = await prisma.document.update({
       where: { id: document.id },
@@ -319,6 +351,9 @@ router.post('/:id/extract', authenticate, async (req: AuthRequest, res: Response
       extracted = simulateOCRExtraction(doc.documentType || 'other', doc.name);
     }
     
+    // Always strip sensitive fields regardless of extraction source
+    extracted = stripSensitiveFields(extracted);
+
     // Save extracted fields
     await prisma.document.update({
       where: { id: doc.id },
@@ -356,17 +391,11 @@ router.post('/:id/extract/confirm', authenticate, async (req: AuthRequest, res: 
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
 
     const updateData: any = {};
-    if (extractedData.fullName && !user.fullName) updateData.fullName = extractedData.fullName;
-    if (extractedData.dateOfBirth && !user.dateOfBirth) updateData.dateOfBirth = extractedData.dateOfBirth;
-    if (extractedData.address && !user.addressLine) updateData.addressLine = extractedData.address;
-    if (extractedData.city && !user.city) updateData.city = extractedData.city;
-    if (extractedData.state && !user.state) updateData.state = extractedData.state;
-    if (extractedData.phone && extractedData.phone !== user.phone) {
-      // Only update phone if it's a new valid one
-      try {
-        updateData.phone = extractedData.phone;
-      } catch (e) { /* skip */ }
-    }
+    if (extractedData.fullName) updateData.fullName = extractedData.fullName;
+    if (extractedData.dateOfBirth || extractedData.dob) updateData.dateOfBirth = extractedData.dateOfBirth || extractedData.dob;
+    if (extractedData.address) updateData.addressLine = extractedData.address;
+    if (extractedData.city) updateData.city = extractedData.city;
+    if (extractedData.state) updateData.state = extractedData.state;
 
     const updated = await prisma.user.update({
       where: { id: user.id },
@@ -419,49 +448,35 @@ function detectDocumentType(filename: string): string {
 }
 
 function simulateOCRExtraction(docType: string, docName: string): Record<string, any> {
-  const names = ['Rajesh Kumar', 'Priya Singh', 'Amit Patel', 'Neha Gupta', 'Vikram Sharma'];
-  const randomName = names[Math.floor(Math.random() * names.length)];
-  
   const baseFields = {
-    fullName: randomName,
-    dateOfBirth: '1995-03-15',
-    email: `${randomName.toLowerCase().replace(/ /g, '.')}@email.com`,
-    phone: '+91-98765-' + Math.floor(Math.random() * 100000).toString().padStart(5, '0'),
-    address: '123 Tech Park, Innovation Street',
-    city: 'Bangalore',
-    state: 'Karnataka',
-    pincode: '560045'
+    fullName: 'abc',
+    dateOfBirth: '2000-01-01',
+    address: '123 Dummy St, Dummy City, 000000',
+    city: 'Dummy City',
+    state: 'Dummy State',
+    pincode: '000000',
+    aadhaarNumber: 'xxxxxxxx0000',
+    gender: 'Other',
+    dob: '2000-01-01',
+    profilePhotoUrl: null
   };
 
   const typeSpecific: Record<string, any> = {
-    identity: {
-      ...baseFields,
-      aadhaarNumber: Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0'),
-      panNumber: 'ABCDE1234F',
-      passportNumber: 'P1234567',
-      gender: 'Male',
-      dob: baseFields.dateOfBirth
-    },
-    address: {
-      address: '123 Tech Park, Innovation Street, Bangalore',
-      city: 'Bangalore',
-      state: 'Karnataka',
-      pincode: '560045'
-    },
     financial: {
       ...baseFields,
       accountNumber: Math.floor(Math.random() * 1000000000000000).toString().slice(0, 14),
       ifsc: 'SBIN0001234',
-      panNumber: 'ABCDE1234F',
       annualIncome: '1200000'
     },
     employment: {
+      ...baseFields,
       employer: 'Tech Solutions India',
       designation: 'Senior Software Engineer',
       department: 'Engineering',
       employeeId: 'EMP-2024-001'
     },
     education: {
+      ...baseFields,
       institution: 'Indian Institute of Technology',
       degree: 'Bachelor of Technology',
       major: 'Computer Science',
@@ -480,34 +495,29 @@ function simulateOCRExtraction(docType: string, docName: string): Record<string,
 
 function generateMockAadhaar(): Record<string, any> {
   return {
-    fullName: 'Rajesh Kumar',
-    aadhaarNumber: '123456789012',
-    dateOfBirth: '1990-05-20',
-    gender: 'Male',
-    address: '123 Tech Park, Bangalore',
-    phone: '+91-9876543210',
-    email: 'rajesh@email.com'
+    fullName: 'abc',
+    aadhaarNumber: '000000000000',
+    dateOfBirth: '2000-01-01',
+    gender: 'Other',
+    address: '123 Dummy St, Dummy City'
   };
 }
 
 function generateMockPAN(): Record<string, any> {
   return {
-    fullName: 'Rajesh Kumar',
-    panNumber: 'ABCDE1234F',
-    dateOfBirth: '1990-05-20',
-    email: 'rajesh@email.com',
-    phone: '+91-9876543210'
+    fullName: 'abc',
+    dateOfBirth: '2000-01-01'
   };
 }
 
 function generateMockDL(): Record<string, any> {
   return {
-    fullName: 'Rajesh Kumar',
-    dlNumber: 'KA-1234567890',
-    dateOfBirth: '1990-05-20',
-    issuedDate: '2018-06-15',
-    expiryDate: '2028-06-14',
-    address: '123 Tech Park, Bangalore',
+    fullName: 'abc',
+    dlNumber: 'XX-0000000000',
+    dateOfBirth: '2000-01-01',
+    issuedDate: '2020-01-01',
+    expiryDate: '2030-01-01',
+    address: '123 Dummy St, Dummy City',
     validityClass: 'LMV'
   };
 }

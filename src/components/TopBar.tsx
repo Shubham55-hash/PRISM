@@ -1,6 +1,8 @@
 import { Search, Bell, Menu } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import { useApi } from '../hooks/useApi';
+import { identityApi } from '../api/identity';
 
 interface TopBarProps {
   onMenuClick: () => void;
@@ -8,6 +10,7 @@ interface TopBarProps {
 
 export function TopBar({ onMenuClick }: TopBarProps) {
   const location = useLocation();
+  const { data: identity } = useApi(() => identityApi.getIdentity(), []);
 
   return (
     <header className="flex justify-between items-center h-20 px-4 md:px-12 fixed top-0 right-0 w-full md:w-[calc(100%-16rem)] z-40 bg-inverse-on-surface/82 backdrop-blur-xl transition-all duration-300">
@@ -62,15 +65,13 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         <button className="text-primary hover:opacity-80 transition-opacity">
           <Bell className="w-6 h-6" />
         </button>
-        <div className="w-10 h-10 rounded-full border-2 border-primary overflow-hidden">
-          <img 
-            className="w-full h-full object-cover" 
-            src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100" 
-            alt="Profile"
-            referrerPolicy="no-referrer"
-          />
+        <div className="w-10 h-10 rounded-full border-2 border-primary overflow-hidden flex items-center justify-center bg-surface-container shadow-sm">
+          <span className="text-sm font-bold text-primary">
+            {(identity?.fullName || 'abc').charAt(0).toUpperCase()}
+          </span>
         </div>
       </div>
     </header>
   );
 }
+
