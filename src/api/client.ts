@@ -30,7 +30,7 @@ api.interceptors.response.use(
       window.location.href = '/login';
     }
     const status = error.response?.status || 500;
-    const message = (error.response?.data as any)?.error || error.message || 'Request failed';
+    const message = (error.response?.data as any)?.message || (error.response?.data as any)?.error || error.message || 'Request failed';
     return Promise.reject(new ApiError(status, message));
   }
 );
