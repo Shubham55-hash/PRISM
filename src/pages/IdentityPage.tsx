@@ -1,8 +1,19 @@
 import React from 'react';
-import { Shield, Fingerprint, Mail, Phone, MapPin, Calendar } from 'lucide-react';
+import { Shield, Fingerprint, Mail, Phone, MapPin, Calendar, Loader } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useApi } from '../hooks/useApi';
+import { identityApi } from '../api/identity';
 
 export function IdentityPage() {
+  const { data: identity, loading: idLoading } = useApi(() => identityApi.getIdentity(), []);
+  const { data: prismId, loading: cardLoading } = useApi(() => identityApi.getPrismId(), []);
+
+  const tierLabel = identity?.securityTier === 3 ? 'Tier 3 (Highest)' : identity?.securityTier === 2 ? 'Tier 2 (Standard)' : 'Tier 1 (Basic)';
+  const cityState = [identity?.city, identity?.state].filter(Boolean).join(', ') || 'Not provided';
+  const dob = identity?.dateOfBirth
+    ? new Date(identity.dateOfBirth).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()
+    : 'Not provided';
+
   return (
     <div className="space-y-8">
       <header>
@@ -12,7 +23,7 @@ export function IdentityPage() {
 
       <div className="grid grid-cols-12 gap-8">
         {/* ID Card */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="col-span-12 lg:col-span-5 bg-prism-sidebar rounded-2xl p-8 text-inverse-on-surface relative overflow-hidden shadow-2xl"
@@ -29,63 +40,80 @@ export function IdentityPage() {
 
             <div className="flex gap-6 items-center mb-12">
               <div className="w-24 h-24 rounded-xl border-2 border-prism-accent/30 overflow-hidden">
-                <img 
-                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200" 
-                  alt="Avatar" 
-                  className="w-full h-full object-cover grayscale"
-                  referrerPolicy="no-referrer"
-                />
+                {cardLoading ? (
+                  <div className="w-full h-full bg-prism-accent/10 flex items-center justify-center">
+                    <Loader className="w-6 h-6 text-prism-accent animate-spin" />
+                  </div>
+                ) : (
+                  <img
+                    src={prismId?.profilePhotoUrl || identity?.profilePhotoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'}
+                    alt="Avatar"
+                    className="w-full h-full object-cover grayscale"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
               </div>
               <div>
-                <p className="text-2xl font-headline font-bold">Arjun Varma</p>
-                <p className="text-sm text-prism-accent/80">ID: PR-992-001-X</p>
+                <p className="text-2xl font-headline font-bold">
+                  {cardLoading ? '…' : (prismId?.fullName || identity?.fullName || 'Loading…')}
+                </p>
+                <p className="text-sm text-prism-accent/80">
+                  ID: {cardLoading ? '…' : (prismId?.prismId || identity?.prismId || 'PR-XXX-XXX-X')}
+                </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-auto">
               <div>
                 <p className="text-[10px] uppercase text-prism-accent/60 tracking-wider">Issued On</p>
-                <p className="text-sm font-medium">12 MAR 2024</p>
+                <p className="text-sm font-medium">{prismId?.issuedOn || '—'}</p>
               </div>
               <div>
                 <p className="text-[10px] uppercase text-prism-accent/60 tracking-wider">Expires</p>
-                <p className="text-sm font-medium">11 MAR 2029</p>
+                <p className="text-sm font-medium">{prismId?.expiresOn || '—'}</p>
               </div>
             </div>
           </div>
         </motion.div>
 
         {/* Personal Details */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="col-span-12 lg:col-span-7 bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/10 shadow-sm"
         >
           <h3 className="font-headline text-xl font-bold mb-6">Verified Attributes</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[
-              { icon: Mail, label: 'Email Address', value: 'arjun.v@prism.io' },
-              { icon: Phone, label: 'Phone Number', value: '+91 98765 43210' },
-              { icon: MapPin, label: 'Primary Residence', value: 'Bandra West, Mumbai, MH' },
-              { icon: Calendar, label: 'Date of Birth', value: '17 OCT 1992' },
-              { icon: Fingerprint, label: 'Biometric Status', value: 'Active / Encrypted' },
-              { icon: Shield, label: 'Security Level', value: 'Tier 3 (Highest)' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-background border border-outline-variant/5">
-                <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
-                  <item.icon className="w-5 h-5" />
+
+          {idLoading ? (
+            <div className="flex items-center justify-center h-48">
+              <Loader className="w-6 h-6 text-primary animate-spin" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                { icon: Mail, label: 'Email Address', value: identity?.email || '—' },
+                { icon: Phone, label: 'Phone Number', value: identity?.phone || '—' },
+                { icon: MapPin, label: 'Primary Residence', value: cityState },
+                { icon: Calendar, label: 'Date of Birth', value: dob },
+                { icon: Fingerprint, label: 'Biometric Status', value: identity?.biometricStatus === 'active' ? 'Active / Encrypted' : identity?.biometricStatus || '—' },
+                { icon: Shield, label: 'Security Level', value: tierLabel },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-background border border-outline-variant/5">
+                  <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+                    <item.icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase text-secondary font-bold tracking-wider">{item.label}</p>
+                    <p className="text-sm font-semibold text-on-surface">{item.value}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] uppercase text-secondary font-bold tracking-wider">{item.label}</p>
-                  <p className="text-sm font-semibold text-on-surface">{item.value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          
+              ))}
+            </div>
+          )}
+
           <button className="mt-8 w-full py-4 border-2 border-dashed border-outline-variant rounded-xl text-secondary font-bold text-sm hover:bg-surface-container transition-colors">
-            + Add New Verified Attribute
+            + Link New Credential via DigiLocker
           </button>
         </motion.div>
       </div>

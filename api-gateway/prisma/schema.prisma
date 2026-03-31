@@ -1,0 +1,136 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  prismId            String    @unique @map("prism_id")
+  fullName           String    @map("full_name")
+  displayName        String?   @map("display_name")
+  email              String    @unique
+  phone              String    @unique
+  dateOfBirth        String?   @map("date_of_birth")
+  addressLine        String?   @map("address_line")
+  city               String?
+  state              String?
+  aadhaarHash        String?   @map("aadhaar_hash")
+  abhaId             String?   @map("abha_id")
+  digilockerLinked   Boolean   @default(false) @map("digilocker_linked")
+  biometricStatus    String    @default("active") @map("biometric_status")
+  securityTier       Int       @default(3) @map("security_tier")
+  trustScore         Int       @default(0) @map("trust_score")
+  profilePhotoUrl    String?   @map("profile_photo_url")
+  passwordHash       String    @map("password_hash")
+  pendingRequests    Int       @default(0) @map("pending_requests")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  documents          Document[]
+  consents           Consent[]
+  activityLog        ActivityLog[]
+  trustScoreHistory  TrustScoreHistory[]
+  predictions        LifeStagePrediction[]
+}
+
+model Document {
+  id                 String    @id @default(cuid())
+  userId             String    @map("user_id")
+  name               String
+  originalFilename   String?   @map("original_filename")
+  documentType       String?   @map("document_type")
+  fileSizeBytes      Int?      @map("file_size_bytes")
+  mimeType           String?   @map("mime_type")
+  localPath          String?   @map("local_path")
+  ocrExtractedFields String?   @map("ocr_extracted_fields")
+  isVerified         Boolean   @default(false) @map("is_verified")
+  vcCredentialId     String?   @map("vc_credential_id")
+  vcIssuedAt         DateTime? @map("vc_issued_at")
+  vcExpiresAt        DateTime? @map("vc_expires_at")
+  vcProof            String?   @map("vc_proof")
+  uploadSource       String    @default("user") @map("upload_source")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityLog        ActivityLog[]
+}
+
+model Consent {
+  id                 String    @id @default(cuid())
+  userId             String    @map("user_id")
+  institutionName    String    @map("institution_name")
+  institutionId      String?   @map("institution_id")
+  purpose            String
+  accessTier         Int       @default(1) @map("access_tier")
+  allowedFields      String?   @map("allowed_fields")
+  consentToken       String    @unique @map("consent_token")
+  status             String    @default("active")
+  grantedAt          DateTime  @default(now()) @map("granted_at")
+  expiresAt          DateTime  @map("expires_at")
+  revokedAt          DateTime? @map("revoked_at")
+  lastAccessedAt     DateTime? @map("last_accessed_at")
+  accessCount        Int       @default(0) @map("access_count")
+  institutionLogoUrl String?   @map("institution_logo_url")
+
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityLog        ActivityLog[]
+}
+
+model ActivityLog {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  eventType   String    @map("event_type")
+  title       String
+  description String?
+  entityName  String?   @map("entity_name")
+  entityType  String?   @map("entity_type")
+  documentId  String?   @map("document_id")
+  consentId   String?   @map("consent_id")
+  metadata    String?
+  ipAddress   String?   @map("ip_address")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document    Document? @relation(fields: [documentId], references: [id])
+  consent     Consent?  @relation(fields: [consentId], references: [id])
+}
+
+model TrustScoreHistory {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  score          Int
+  month          String
+  year           Int
+  scoreBreakdown String?  @map("score_breakdown")
+  recordedAt     DateTime @default(now()) @map("recorded_at")
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Institution {
+  id                String   @id @default(cuid())
+  name              String
+  type              String?
+  isVerifiedPartner Boolean  @default(false) @map("is_verified_partner")
+  logoUrl           String?  @map("logo_url")
+  createdAt         DateTime @default(now()) @map("created_at")
+}
+
+model LifeStagePrediction {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  predictedStage  String   @map("predicted_stage")
+  title           String
+  description     String
+  confidence      Float
+  suggestedBundle String?  @map("suggested_bundle")
+  isActioned      Boolean  @default(false) @map("is_actioned")
+  predictedAt     DateTime @default(now()) @map("predicted_at")
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

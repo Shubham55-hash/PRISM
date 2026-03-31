@@ -1,0 +1,46 @@
+import api from './client';
+
+export interface Identity {
+  id: string;
+  prismId: string;
+  fullName: string;
+  displayName: string;
+  email: string;
+  phone: string;
+  dateOfBirth: string | null;
+  addressLine: string | null;
+  city: string | null;
+  state: string | null;
+  abhaId: string | null;
+  digilockerLinked: boolean;
+  biometricStatus: string;
+  securityTier: number;
+  trustScore: number;
+  profilePhotoUrl: string | null;
+  pendingRequests: number;
+  _count?: { documents: number; consents: number };
+}
+
+export interface PrismIdCard {
+  prismId: string;
+  fullName: string;
+  profilePhotoUrl: string | null;
+  securityTier: number;
+  issuedOn: string;
+  expiresOn: string;
+}
+
+export interface TrustScore {
+  score: number;
+  breakdown: { identity: number; documents: number; consents: number; activity: number; security: number };
+  label: string;
+}
+
+export const identityApi = {
+  getIdentity: () => api.get<Identity>('/api/identity'),
+  updateIdentity: (data: Partial<Identity>) => api.put<{ message: string; user: Identity }>('/api/identity', data),
+  getPrismId: () => api.get<PrismIdCard>('/api/identity/prism-id'),
+  getTrustScore: () => api.get<TrustScore>('/api/identity/trust-score'),
+  linkAadhaar: (aadhaarNumber: string) => api.post('/api/identity/link-aadhaar', { aadhaarNumber }),
+  linkAbha: (abhaId: string) => api.post('/api/identity/link-abha', { abhaId }),
+};
