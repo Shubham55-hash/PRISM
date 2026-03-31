@@ -206,6 +206,9 @@ export function DigiLockerModal({ isOpen, onClose, onSuccess, isConnected }: Dig
               <p className="text-gray-600">
                 Connect your DigiLocker account to import official documents directly. You'll be asked to provide your credentials on the DigiLocker website.
               </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800 text-sm italic">
+                "Login to DigiLocker and download your documents, then upload here for secure import."
+              </div>
               <button
                 onClick={handleAuthorize}
                 disabled={loading}

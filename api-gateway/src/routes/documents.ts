@@ -149,8 +149,32 @@ router.get('/:id/download', authenticate, async (req: AuthRequest, res: Response
         return;
       }
     }
-    // Return download URL structure for seeded documents
-    res.json({ downloadUrl: `/api/documents/${document.id}/stream`, expiresIn: 3600 });
+    // Return stream URL for seeded docs
+    res.json({ downloadUrl: `/api/documents/${document.id}/view?token=${req.query.token || ''}`, expiresIn: 3600 });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/documents/:id/view (also aliased as /stream)
+router.get(['/:id/view', '/:id/stream'], authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const document = await prisma.document.findFirst({
+      where: { id: req.params.id, userId: req.user!.userId },
+    });
+    if (!document) { res.status(404).json({ error: 'Document not found' }); return; }
+    
+    if (document.localPath) {
+      const filePath = path.join(uploadDir, document.localPath);
+      if (fs.existsSync(filePath)) {
+        res.setHeader('Content-Type', document.mimeType || 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline');
+        res.sendFile(filePath);
+        return;
+      }
+    }
+
+    // Seeded/Placeholder logic
+    // For MVP, if no file exists, send a generic placeholder PDF or a 404
+    res.redirect('https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 

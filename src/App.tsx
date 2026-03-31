@@ -11,7 +11,6 @@ import { ActivityPage } from './pages/ActivityPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { AutofillPage } from './pages/AutofillPage';
 import { AutofillTestPage } from './pages/AutofillTestPage';
-import { CrisisPage } from './pages/CrisisPage';
 import { LoginPage } from './pages/LoginPage';
 import { InsightsPage } from './pages/InsightsPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -41,9 +40,6 @@ function AppLayout() {
     consent_revoked: (data: any) => {
       showToast('error', 'Consent Revoked', `Access for ${data.institutionName} has been immediately terminated.`);
     },
-    crisis_activated: () => {
-      showToast('error', 'CRISIS MODE ACTIVE', 'Your digital identity is now locked. All active consents are suspended.');
-    }
   });
 
   if (isLoading) {

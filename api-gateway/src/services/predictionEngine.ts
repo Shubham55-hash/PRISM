@@ -64,9 +64,8 @@ export async function analyzeUserLifeEvents(userId: string) {
     });
   }
 
-  // Rule 4: Home Loan (Financials exist, Age > 28)
-  // (We use 0.82 confidence to make it look distinct from the seeded 0.87 if regenerated)
-  if (hasFinancial && age >= 28) {
+  // Rule 4: Home Loan (Financials exist, Age > 27)
+  if (hasFinancial && age >= 27) {
     newPredictions.push({
       userId,
       predictedStage: 'home_loan',
@@ -74,6 +73,31 @@ export async function analyzeUserLifeEvents(userId: string) {
       description: 'Financial stability patterns detected. PRISM can pre-package your home loan credential pack.',
       confidence: 0.82,
       suggestedBundle: JSON.stringify(['financial', 'employment', 'identity', 'address']),
+    });
+  }
+
+  // Rule 5: Digital Identity Audit (Apply to all active users with many docs)
+  if (user.documents.length >= 5) {
+    newPredictions.push({
+      userId,
+      predictedStage: 'identity_audit',
+      title: 'Digital Identity Health Audit',
+      description: 'You have a healthy number of documents. It is a good time to audit which institutions have access to your data.',
+      confidence: 0.95,
+      suggestedBundle: JSON.stringify(['identity', 'consents']),
+    });
+  }
+
+  // Rule 6: Document Vault Optimizer (If any unverified documents)
+  const hasUnverified = user.documents.some(d => !d.isVerified);
+  if (hasUnverified) {
+    newPredictions.push({
+      userId,
+      predictedStage: 'vault_optimizer',
+      title: 'Vault Verification Boost',
+      description: 'Boost your trust score! We noticed unverified documents in your vault. Verify them to increase your credibility.',
+      confidence: 0.90,
+      suggestedBundle: JSON.stringify(['identity', 'documents']),
     });
   }
 

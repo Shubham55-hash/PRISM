@@ -25,12 +25,6 @@ export function SettingsPage() {
     dateOfBirth: '',
     city: '',
     state: '',
-    bloodGroup: '',
-    allergies: '',
-    medicalConditions: '',
-    emergencyContactName: '',
-    emergencyContactPhone: '',
-    emergencyContactRelation: '',
   });
 
   // Security Form
@@ -49,12 +43,6 @@ export function SettingsPage() {
         dateOfBirth: identity.dateOfBirth?.split('T')[0] || '',
         city: identity.city || '',
         state: identity.state || '',
-        bloodGroup: identity.bloodGroup || '',
-        allergies: identity.allergies || '',
-        medicalConditions: identity.medicalConditions || '',
-        emergencyContactName: identity.emergencyContactName || '',
-        emergencyContactPhone: identity.emergencyContactPhone || '',
-        emergencyContactRelation: identity.emergencyContactRelation || '',
       });
     }
   }, [identity]);
@@ -107,7 +95,6 @@ export function SettingsPage() {
             { id: 'security', icon: Shield, label: 'Security & Privacy' },
             { id: 'notifications', icon: Bell, label: 'Notifications' },
             { id: 'region', icon: Globe, label: 'Language & Region' },
-            { id: 'emergency', icon: AlertTriangle, label: 'Emergency Profile' },
             { id: 'appearance', icon: Moon, label: 'Appearance' },
             { id: 'devices', icon: Lock, label: 'Connected Devices' },
           ].map((item) => (
@@ -284,98 +271,8 @@ export function SettingsPage() {
                 </div>
               )}
 
-              {/* === EMERGENCY TAB === */}
-              {activeTab === 'emergency' && (
-                <div className="space-y-8">
-                  <div>
-                    <h3 className="font-headline text-xl font-bold mb-2">Emergency Medical Profile</h3>
-                    <p className="text-secondary text-sm mb-8">This information will be accessible to emergency responders when Crisis Mode is activated.</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase text-secondary tracking-widest">Blood Group</label>
-                      <select 
-                        value={formData.bloodGroup} 
-                        onChange={e => setFormData({...formData, bloodGroup: e.target.value})}
-                        className="w-full bg-background border border-outline-variant/20 rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 ring-primary/40 appearance-none"
-                      >
-                        <option value="">Select Blood Group</option>
-                        {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
-                          <option key={bg} value={bg}>{bg}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase text-secondary tracking-widest">Allergies</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. Penicillin, Peanuts"
-                        value={formData.allergies} 
-                        onChange={e => setFormData({...formData, allergies: e.target.value})} 
-                        className="w-full bg-background border border-outline-variant/20 rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 ring-primary/40" 
-                      />
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="text-[10px] font-bold uppercase text-secondary tracking-widest">Medical Conditions</label>
-                      <textarea 
-                        rows={3}
-                        placeholder="List any chronic conditions or important medical history..."
-                        value={formData.medicalConditions} 
-                        onChange={e => setFormData({...formData, medicalConditions: e.target.value})} 
-                        className="w-full bg-background border border-outline-variant/20 rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 ring-primary/40 resize-none" 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-8 border-t border-outline-variant/10">
-                    <h3 className="font-headline text-lg font-bold mb-6">Emergency Contact</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase text-secondary tracking-widest">Contact Name</label>
-                        <input 
-                          type="text" 
-                          value={formData.emergencyContactName} 
-                          onChange={e => setFormData({...formData, emergencyContactName: e.target.value})} 
-                          className="w-full bg-background border border-outline-variant/20 rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 ring-primary/40" 
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase text-secondary tracking-widest">Relationship</label>
-                        <input 
-                          type="text" 
-                          placeholder="e.g. Spouse, Parent"
-                          value={formData.emergencyContactRelation} 
-                          onChange={e => setFormData({...formData, emergencyContactRelation: e.target.value})} 
-                          className="w-full bg-background border border-outline-variant/20 rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 ring-primary/40" 
-                        />
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="text-[10px] font-bold uppercase text-secondary tracking-widest">Contact Phone</label>
-                        <input 
-                          type="text" 
-                          value={formData.emergencyContactPhone} 
-                          onChange={e => setFormData({...formData, emergencyContactPhone: e.target.value})} 
-                          className="w-full bg-background border border-outline-variant/20 rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 ring-primary/40" 
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-8 border-t border-outline-variant/10 flex justify-end gap-4">
-                    <button 
-                      onClick={handleSaveProfile}
-                      disabled={updating}
-                      className="px-6 py-3 bg-primary text-on-primary rounded-lg text-sm font-bold shadow-md flex items-center justify-center gap-2 min-w-[140px]"
-                    >
-                      {updating ? <Loader className="w-4 h-4 animate-spin" /> : 'Save Emergency Info'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {/* Fallback for other tabs */}
-              {activeTab !== 'profile' && activeTab !== 'security' && activeTab !== 'emergency' && (
+              {activeTab !== 'profile' && activeTab !== 'security' && (
                 <div className="h-64 flex flex-col items-center justify-center text-secondary">
                   <Shield className="w-12 h-12 mb-4 text-outline" />
                   <h3 className="font-bold text-lg">Under Construction</h3>

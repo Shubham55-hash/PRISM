@@ -44,24 +44,14 @@ export function LifeInsightsWidget() {
     );
   }
 
-  if (predictions.length === 0) {
-    return (
-      <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20 shadow-sm mb-8 relative overflow-hidden">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <Sparkles size={18} />
-          </div>
-          <h3 className="font-headline font-semibold text-lg text-on-surface">Life Insights</h3>
-        </div>
-        <div className="text-center py-6">
-          <p className="text-secondary text-sm">No insights available right now.</p>
-          <p className="text-secondary/70 text-xs mt-1">We'll let you know when we predict a new milestone.</p>
-        </div>
-      </div>
-    );
-  }
+  const topPrediction = predictions.length > 0 ? predictions[0] : {
+    id: 'onboarding',
+    title: 'Welcome to PRISM AI',
+    description: 'We are analyzing your digital footprint. Start by uploading more documents to unlock deep life insights and future milestones.',
+    confidence: 1.0,
+    isActioned: false
+  };
 
-  const topPrediction = predictions[0];
   const confidencePercent = Math.round(topPrediction.confidence * 100);
 
   return (
@@ -77,18 +67,20 @@ export function LifeInsightsWidget() {
             </div>
             <h3 className="font-headline font-semibold text-lg text-on-surface">AI Life Insight</h3>
           </div>
-          <Link to="/insights" className="text-primary hover:text-primary/80 transition-colors">
-            <div className="flex items-center gap-1 text-sm font-medium">
-              View All <ChevronRight size={16} />
-            </div>
-          </Link>
+          {predictions.length > 0 && (
+            <Link to="/insights" className="text-primary hover:text-primary/80 transition-colors">
+              <div className="flex items-center gap-1 text-sm font-medium">
+                View All <ChevronRight size={16} />
+              </div>
+            </Link>
+          )}
         </div>
 
         <div className="bg-surface p-5 rounded-xl border border-outline-variant/30 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start mb-2">
             <h4 className="font-semibold text-on-surface">{topPrediction.title}</h4>
             <div className="bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-md">
-              {confidencePercent}% Match
+              {predictions.length > 0 ? `${confidencePercent}% Match` : 'Onboarding'}
             </div>
           </div>
           
@@ -96,9 +88,9 @@ export function LifeInsightsWidget() {
             {topPrediction.description}
           </p>
 
-          <Link to="/insights">
+          <Link to={predictions.length > 0 ? "/insights" : "/documents"}>
             <button className="w-full flex items-center justify-center gap-2 bg-primary text-on-primary py-2.5 rounded-xl font-medium text-sm hover:bg-primary/90 transition-all hover:gap-3">
-              <FileText size={16} /> Prepare Documents <ArrowRight size={16} />
+              <FileText size={16} /> {predictions.length > 0 ? "Prepare Documents" : "Upload Documents"} <ArrowRight size={16} />
             </button>
           </Link>
         </div>

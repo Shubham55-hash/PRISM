@@ -73,9 +73,7 @@ export function SuggestionBanner() {
                 onClick={(e) => {
                   e.preventDefault();
                   const title = topSuggestion.title.toLowerCase();
-                  if (title.includes('emergency')) {
-                    navigate('/crisis');
-                  } else if (title.includes('autofill')) {
+                  if (title.includes('autofill')) {
                     navigate('/autofill');
                   } else if (title.includes('document')) {
                     navigate('/documents');

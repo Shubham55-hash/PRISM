@@ -153,15 +153,9 @@ export function DocumentsPage() {
   };
 
   const handleView = async (id: string) => {
-    try {
-      const res = await getDownloadUrl(id);
-      if (res.downloadUrl) {
-        const url = res.downloadUrl.startsWith('http') ? res.downloadUrl : `${BASE_URL}${res.downloadUrl}`;
-        window.open(url, '_blank');
-      }
-    } catch {
-      window.open(`${BASE_URL}/api/documents/${id}/download`, '_blank');
-    }
+    const token = localStorage.getItem('prism_token');
+    const viewUrl = `${BASE_URL}/api/documents/${id}/view?token=${token || ''}`;
+    window.open(viewUrl, '_blank');
   };
 
   const handleDownload = async (id: string, filename: string) => {

@@ -52,11 +52,10 @@ async function generateSuggestions(userId: string): Promise<Array<{ title: strin
     });
   }
 
-  // Rule 3: Health insurance recommendation
   if (age >= 25 && !hasMedical) {
     suggestions.push({
       title: 'Add Medical Information',
-      description: 'Maintain your health records including blood group and medical history for emergencies.',
+      description: 'Maintain your health records and medical history for personal access.',
       priority: 'medium',
       icon: '🏥'
     });
@@ -82,15 +81,7 @@ async function generateSuggestions(userId: string): Promise<Array<{ title: strin
     });
   }
 
-  // Rule 6: Crisis profile setup
-  if (!user.aadhaarHash) {
-    suggestions.push({
-      title: 'Enable Emergency Access',
-      description: 'Set up crisis mode to allow emergency responders quick access to vital information.',
-      priority: 'low',
-      icon: '🚑'
-    });
-  }
+
 
   // Rule 7: Trust score improvement
   if (user.trustScore < 50 && user.documents.length >= 3) {

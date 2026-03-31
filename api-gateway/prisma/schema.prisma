@@ -31,12 +31,6 @@ model User {
   trustScore         Int       @default(0) @map("trust_score")
   profilePhotoUrl    String?   @map("profile_photo_url")
   passwordHash       String    @map("password_hash")
-  bloodGroup         String?   @map("blood_group")
-  allergies          String?
-  medicalConditions  String?   @map("medical_conditions")
-  emergencyContactName  String? @map("emergency_contact_name")
-  emergencyContactPhone String? @map("emergency_contact_phone")
-  emergencyContactRelation String? @map("emergency_contact_relation")
   pendingRequests    Int       @default(0) @map("pending_requests")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")

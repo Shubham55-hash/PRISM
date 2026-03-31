@@ -2,8 +2,8 @@ import axios from 'axios';
 
 // DigiLocker OAuth Configuration
 const DIGILOCKER_CONFIG = {
-  authorizationUrl: 'https://digilocker.meity.gov.in/public/oauth2/1/authorize',
-  tokenUrl: 'https://digilocker.meity.gov.in/public/oauth2/1/token',
+  authorizationUrl: 'https://www.digilocker.gov.in/',
+  tokenUrl: 'https://digilocker.gov.in/public/oauth2/1/token',
   apiUrl: 'https://digilocker.meity.gov.in/public/oauth2/1',
   clientId: process.env.DIGILOCKER_CLIENT_ID || 'your_client_id',
   clientSecret: process.env.DIGILOCKER_CLIENT_SECRET || 'your_client_secret',
@@ -14,6 +14,9 @@ const DIGILOCKER_CONFIG = {
  * Generate DigiLocker authorization URL
  */
 export function generateDigiLockerAuthUrl(state: string): string {
+  if (DIGILOCKER_CONFIG.clientId === 'your_client_id') {
+    return DIGILOCKER_CONFIG.authorizationUrl;
+  }
   const params = new URLSearchParams({
     client_id: DIGILOCKER_CONFIG.clientId,
     redirect_uri: DIGILOCKER_CONFIG.redirectUri,

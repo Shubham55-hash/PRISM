@@ -11,7 +11,6 @@ import consentsRoutes from './routes/consents';
 import activityRoutes from './routes/activity';
 import analyticsRoutes from './routes/analytics';
 import assistantRoutes from './routes/assistant';
-import crisisRoutes from './routes/crisis';
 import autofillRoutes from './routes/autofill';
 import predictionsRoutes from './routes/predictions';
 import { auditLog } from './middleware/audit';
@@ -47,7 +46,6 @@ app.use('/api/consents', consentsRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/assistant', assistantRoutes);
-app.use('/api/crisis', crisisRoutes);
 app.use('/api/autofill', autofillRoutes);
 app.use('/api/predictions', predictionsRoutes);
 
