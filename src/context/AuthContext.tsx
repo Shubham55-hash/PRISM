@@ -46,6 +46,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { accessToken, refreshToken, user } = res.data.data;
     localStorage.setItem('prism_token', accessToken);
     if (refreshToken) localStorage.setItem('prism_refresh', refreshToken);
+    
+    // Share token with extension
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      try {
+        chrome.runtime.sendMessage({
+          type: 'SET_TOKEN',
+          token: accessToken
+        }, () => {
+          if (chrome.runtime.lastError) {
+            console.log('[PRISM] Extension not connected, token will be set manually');
+          }
+        });
+      } catch (err) {
+        console.log('[PRISM] Extension messaging failed');
+      }
+    }
+    
     setToken(accessToken);
     setUser(user);
   }, []);
@@ -55,6 +72,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { accessToken, refreshToken, user } = res.data.data;
     localStorage.setItem('prism_token', accessToken);
     if (refreshToken) localStorage.setItem('prism_refresh', refreshToken);
+    
+    // Share token with extension
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      try {
+        chrome.runtime.sendMessage({
+          type: 'SET_TOKEN',
+          token: accessToken
+        }, () => {
+          if (chrome.runtime.lastError) {
+            console.log('[PRISM] Extension not connected, token will be set manually');
+          }
+        });
+      } catch (err) {
+        console.log('[PRISM] Extension messaging failed');
+      }
+    }
+    
     setToken(accessToken);
     setUser(user);
   }, []);

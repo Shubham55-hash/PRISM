@@ -1,11 +1,18 @@
 import { fetchAutofillData } from './utils/api.js';
 
-// Setup listener for messages from content.js
+// Setup listener for messages from content.js and web app
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === "FETCH_AUTOFILL_DATA") {
     // Fire asynchronously and keep connection open by returning true
     handleAutofillRequest(sendResponse);
     return true; 
+  } else if (request.type === "SET_TOKEN") {
+    // Receive token from web app after login
+    chrome.storage.local.set({ prism_token: request.token }, () => {
+      console.log("[PRISM Autofill] Token received and saved from web app");
+      sendResponse({ success: true });
+    });
+    return true;
   }
 });
 

@@ -123,13 +123,23 @@
     <h1>PRISM Autofill</h1>
   </div>
   <div class="content">
+    <div id="connectionStatus" class="status" style="margin-top: 0; margin-bottom: 16px;"></div>
+    
     <div class="form-group">
       <label for="tokenInput">Autofill Consent Token</label>
-      <input type="text" id="tokenInput" placeholder="Paste your generated token here">
+      <input type="text" id="tokenInput" placeholder="Your token will appear here after login">
     </div>
-    <button id="saveBtn">Connect to PRISM</button>
+    <button id="saveBtn">✓ Connect to PRISM</button>
+    <button id="autoTokenBtn" style="background: var(--text-muted); margin-top: 8px;">Auto-fetch from PRISM</button>
     
     <div id="statusMsg" class="status"></div>
+    
+    <div style="margin-top: 16px; padding: 12px; background: rgba(112, 88, 49, 0.05); border-radius: 8px; font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+      <strong>How to get your token:</strong><br>
+      1. Login on <a href="http://localhost:3000" target="_blank" style="color: var(--primary); text-decoration: none;">PRISM</a><br>
+      2. Click "Auto-fetch from PRISM" or paste your token above<br>
+      3. Click "Connect to PRISM"
+    </div>
   </div>
   <div class="footer">
     Your identity data remains encrypted.

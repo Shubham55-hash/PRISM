@@ -114,10 +114,20 @@
   }
 
   // Listen for manual trigger from popup
-  chrome.runtime.onMessage.addListener((msg) => {
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "TRIGGER_AUTOFILL") {
       console.log("[PRISM Autofill] Manual trigger received.");
       runAutofill();
+    } else if (msg.type === "GET_TOKEN_FROM_PAGE") {
+      // Extract token from localStorage if available
+      const token = localStorage.getItem('prism_token');
+      if (token) {
+        console.log("[PRISM Autofill] Token found in page, sending to popup");
+        sendResponse({ token });
+      } else {
+        console.log("[PRISM Autofill] No token found in page");
+        sendResponse({ token: null });
+      }
     }
   });
 
