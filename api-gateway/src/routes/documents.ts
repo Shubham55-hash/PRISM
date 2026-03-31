@@ -41,7 +41,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
     ]);
 
     res.json({
-      documents: documents.map(d => ({
+      documents: documents.map((d: any) => ({
         ...d,
         ocrExtractedFields: d.ocrExtractedFields ? JSON.parse(d.ocrExtractedFields) : null,
         vcProof: d.vcProof ? JSON.parse(d.vcProof) : null,

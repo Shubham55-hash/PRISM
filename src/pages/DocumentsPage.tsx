@@ -64,16 +64,20 @@ export function DocumentsPage() {
   const handleView = async (id: string) => {
     try {
       const token = localStorage.getItem('prism_token');
-      // Ask backend for the download URL; then open in a new tab
-      const res = await documentsApi.getDownloadUrl(id);
-      if (res.downloadUrl) {
-        // Relative URL from backend — prepend BASE_URL
-        const url = res.downloadUrl.startsWith('http') ? res.downloadUrl : `${BASE_URL}${res.downloadUrl}`;
-        window.open(url, '_blank');
+      const response = await fetch(`${BASE_URL}/api/documents/${id}/download`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) throw new Error('View failed');
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await response.json();
+        window.open(data.downloadUrl?.startsWith('http') ? data.downloadUrl : `${BASE_URL}${data.downloadUrl}`, '_blank');
+        return;
       }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
     } catch {
-      // Fallback: open direct download endpoint in new tab with auth header not possible,
-      // so open via anchor — user will see JSON for seeded docs, actual file for uploads
       window.open(`${BASE_URL}/api/documents/${id}/download`, '_blank');
     }
   };
