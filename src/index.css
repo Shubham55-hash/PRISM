@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-headline: "Manrope", sans-serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+
+  --color-surface-container-low: #f8f3eb;
+  --color-secondary-fixed-dim: #dbc3a6;
+  --color-secondary-fixed: #f8dec1;
+  --color-on-surface-variant: #4d463b;
+  --color-on-secondary: #ffffff;
+  --color-on-surface: #1d1c17;
+  --color-secondary: #6e5b44;
+  --color-background: #fef9f1;
+  --color-on-primary-container: #fffbff;
+  --color-surface-tint: #725b33;
+  --color-tertiary-fixed-dim: #ffb689;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #fffbff;
+  --color-inverse-surface: #32302b;
+  --color-surface-variant: #e7e2da;
+  --color-primary-fixed: #ffdeac;
+  --color-tertiary: #8a4c1e;
+  --color-primary-fixed-dim: #e1c292;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #93000a;
+  --color-on-secondary-container: #725f48;
+  --color-surface-container: #f2ede5;
+  --color-outline: #7f766a;
+  --color-inverse-primary: #e1c292;
+  --color-on-tertiary-fixed: #311300;
+  --color-surface-bright: #fef9f1;
+  --color-secondary-container: #f5dcbe;
+  --color-on-background: #1d1c17;
+  --color-surface-container-lowest: #ffffff;
+  --color-tertiary-container: #a86434;
+  --color-surface-dim: #ded9d2;
+  --color-on-secondary-fixed: #261907;
+  --color-on-primary: #ffffff;
+  --color-primary: #705831;
+  --color-primary-container: #8a7147;
+  --color-outline-variant: #d0c5b7;
+  --color-on-primary-fixed: #281900;
+  --color-inverse-on-surface: #f5f0e8;
+  --color-tertiary-fixed: #ffdbc7;
+  --color-on-secondary-fixed-variant: #55442e;
+  --color-surface: #fef9f1;
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-surface-container-high: #ece8e0;
+  --color-on-tertiary-fixed-variant: #70370a;
+  --color-on-primary-fixed-variant: #59431e;
+  
+  --color-prism-sidebar: #3D2E1A;
+  --color-prism-accent: #A0855A;
+}
+
+@layer base {
+  body {
+    @apply bg-background font-body text-on-surface;
+  }
+}
