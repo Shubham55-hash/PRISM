@@ -12,12 +12,20 @@ export interface AnalyticsSummary {
   totalDocuments: number;
   verifiedDocuments: number;
   activeConsents: number;
+  pendingRequests: number;
   trustScore: number;
   trustScoreHistory: TrustHistoryItem[];
 }
 
-export const getSummary = () => api.get<{ data: AnalyticsSummary }>('/api/analytics/summary').then((res: any) => res.data?.data || res.data || res);
-export const getTrustHistory = () => api.get<{ data: TrustHistoryItem[] }>('/api/analytics/trust-history').then((res: any) => res.data?.data || res.data || res);
+export const getSummary = async () => {
+  const res = await api.get<any>('/api/analytics/summary');
+  return res.data?.data || res.data;
+};
+
+export const getTrustHistory = async () => {
+  const res = await api.get<any>('/api/analytics/trust-history');
+  return res.data?.data || res.data;
+};
 
 // Mock endpoints for UI fillers not yet in API Gateway
 export const getNetworkReach = () => Promise.resolve({ institutions: 12, verifications: 89, totalConnections: 45 });

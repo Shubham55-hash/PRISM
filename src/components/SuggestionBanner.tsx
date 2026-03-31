@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Sparkles, ArrowRight, X, Loader, AlertCircle, Plus, Shield, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { getSuggestions } from '../api/assistant';
 
 export function SuggestionBanner() {
+  const navigate = useNavigate();
   const [closed, setClosed] = useState(false);
   
   const { data: suggestions, loading: loadingSuggestions } = useApi(() => getSuggestions(), []);
@@ -67,6 +69,24 @@ export function SuggestionBanner() {
               <p className="text-sm font-medium text-secondary mb-4 leading-relaxed max-w-lg">
                 {topSuggestion.description}
               </p>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  const title = topSuggestion.title.toLowerCase();
+                  if (title.includes('emergency')) {
+                    navigate('/crisis');
+                  } else if (title.includes('autofill')) {
+                    navigate('/autofill');
+                  } else if (title.includes('document')) {
+                    navigate('/documents');
+                  } else if (title.includes('consent')) {
+                    navigate('/consents');
+                  }
+                }}
+                className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-primary/80 transition-colors cursor-pointer"
+              >
+                Take Action <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </>
           ) : null}
         </div>

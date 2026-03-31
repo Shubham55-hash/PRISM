@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FileText, Search, Download, Eye, CheckCircle2, Clock, Trash2, Loader, X, UploadCloud, FileJson, BadgeCheck, ChevronDown, ChevronUp, Zap, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApi } from '../hooks/useApi';
-import { getDocuments, uploadDocument, verifyDocument, deleteDocument, getDownloadUrl, extractDocument, confirmExtraction, importFromDigiLocker } from '../api/documents';
+import { getDocuments, uploadDocument, verifyDocument, deleteDocument, getDownloadUrl, extractDocument, confirmExtraction } from '../api/documents';
 import { DocumentRowSkeleton } from '../components/Skeleton';
+import { DigiLockerModal } from '../components/DigiLockerModal';
 import { BASE_URL } from '../api/client';
 
 const TYPE_COLORS: Record<string, string> = {
@@ -28,13 +29,34 @@ export function DocumentsPage() {
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
   const [extractingId, setExtractingId] = useState<string | null>(null);
   const [extractedModal, setExtractedModal] = useState<any>(null);
-  const [importingDigiLocker, setImportingDigiLocker] = useState(false);
+  const [digilockerModalOpen, setDigilockerModalOpen] = useState(false);
+  const [digilockerConnected, setDigilockerConnected] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data, loading, refetch } = useApi(
     () => getDocuments({ search: search || undefined, type: typeFilter || undefined, page }),
     [search, typeFilter, page]
   );
+
+  // Check DigiLocker connection status on mount
+  useEffect(() => {
+    checkDigiLockerStatus();
+  }, []);
+
+  const checkDigiLockerStatus = async () => {
+    // This would typically be a dedicated API call to check if user has DigiLocker connected
+    // For now, we check from user profile data if available
+    try {
+      // TODO: Add endpoint to check DigiLocker connection status
+      const response = await fetch('/api/user/profile', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('prism_token')}` }
+      });
+      const userData = await response.json();
+      setDigilockerConnected(userData.digilockerLinked || false);
+    } catch (err) {
+      console.error('Failed to check DigiLocker status:', err);
+    }
+  };
 
   const handleExtract = async (docId: string, docName: string) => {
     setExtractingId(docId);
@@ -67,19 +89,14 @@ export function DocumentsPage() {
     }
   };
 
-  const handleImportDigiLocker = async () => {
-    setImportingDigiLocker(true);
-    try {
-      const result = await importFromDigiLocker();
-      if (result.success) {
-        refetch();
-        alert(`Imported ${result.data.length} documents from DigiLocker!`);
-      }
-    } catch (err: any) {
-      alert('DigiLocker import failed: ' + err.message);
-    } finally {
-      setImportingDigiLocker(false);
-    }
+  const handleImportDigiLocker = () => {
+    setDigilockerModalOpen(true);
+  };
+
+  const handleDigiLockerSuccess = (count: number) => {
+    refetch();
+    checkDigiLockerStatus();
+    alert(`Imported ${count} documents from DigiLocker!`);
   };
 
   const performUpload = async (file: File) => {
@@ -333,10 +350,9 @@ export function DocumentsPage() {
           )}
           <button
             onClick={handleImportDigiLocker}
-            disabled={importingDigiLocker}
-            className="px-4 py-2 bg-primary/10 text-primary rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-primary/20 disabled:opacity-50 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-primary/10 text-primary rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-primary/20 transition-colors flex items-center gap-2"
           >
-            {importingDigiLocker ? <Loader className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+            <Zap className="w-3 h-3" />
             DigiLocker
           </button>
         </div>
@@ -515,6 +531,14 @@ export function DocumentsPage() {
           </div>
         )}
       </div>
+
+      {/* DigiLocker Modal */}
+      <DigiLockerModal 
+        isOpen={digilockerModalOpen}
+        onClose={() => setDigilockerModalOpen(false)}
+        onSuccess={handleDigiLockerSuccess}
+        isConnected={digilockerConnected}
+      />
     </div>
   );
 }

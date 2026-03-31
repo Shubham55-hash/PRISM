@@ -6,6 +6,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../db/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { broadcastToUser } from '../utils/websocket';
+import { 
+  generateDigiLockerAuthUrl, 
+  exchangeAuthCode, 
+  fetchDigiLockerDocuments,
+  downloadDigiLockerDocument,
+  mapDigiLockerDocType 
+} from '../utils/digilocker';
 
 const router = Router();
 
@@ -280,8 +287,217 @@ router.post('/:id/extract/confirm', authenticate, async (req: AuthRequest, res: 
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-// POST /api/documents/import-digilocker - Mock DigiLocker import
+// GET /api/documents/digilocker/authorize - Initiate DigiLocker OAuth flow
+router.get('/digilocker/authorize', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const state = uuidv4(); // Anti-CSRF token
+    
+    // Store state in a temporary session/cache (in production, use Redis)
+    await prisma.user.update({
+      where: { id: req.user!.userId },
+      data: { 
+        digilockerState: state,
+        digilockerStateExpiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+      } as any,
+    });
+
+    const authUrl = generateDigiLockerAuthUrl(state);
+    res.json({ authUrl, state });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/documents/digilocker/callback - Handle DigiLocker OAuth callback
+router.get('/digilocker/callback', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { code, state } = req.query;
+
+    if (!code || !state) {
+      res.status(400).json({ error: 'Missing authorization code or state' });
+      return;
+    }
+
+    // Verify state token (find which user this belongs to)
+    const user = await prisma.user.findFirst({
+      where: { 
+        digilockerState: state as string,
+        digilockerStateExpiresAt: { gt: new Date() }
+      } as any,
+    });
+
+    if (!user) {
+      res.status(401).json({ error: 'Invalid or expired state token' });
+      return;
+    }
+
+    // Exchange code for tokens
+    const tokenData = await exchangeAuthCode(code as string);
+
+    // Store DigiLocker token in user record
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        digilockerAccessToken: tokenData.accessToken,
+        digilockerRefreshToken: tokenData.refreshToken || null,
+        digilockerTokenExpiresAt: new Date(Date.now() + tokenData.expiresIn * 1000),
+        digilockerState: null,
+        digilockerStateExpiresAt: null,
+      } as any,
+    });
+
+    // Redirect back to frontend with success
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/documents?digilocker=success`);
+  } catch (err: any) {
+    console.error('DigiLocker callback error:', err);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/documents?digilocker=error&message=${encodeURIComponent(err.message)}`);
+  }
+});
+
+// GET /api/documents/digilocker/documents - Fetch available documents from DigiLocker
+router.get('/digilocker/documents', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+
+    if (!user || !user.digilockerAccessToken) {
+      res.status(401).json({ error: 'DigiLocker not connected. Please authorize first.' });
+      return;
+    }
+
+    // Check if token is expired
+    if (user.digilockerTokenExpiresAt && user.digilockerTokenExpiresAt < new Date()) {
+      res.status(401).json({ error: 'DigiLocker token expired. Please re-authorize.' });
+      return;
+    }
+
+    // Fetch documents from DigiLocker
+    const documents = await fetchDigiLockerDocuments(user.digilockerAccessToken);
+
+    res.json({ 
+      success: true, 
+      documents: documents.map(doc => ({
+        id: doc.id,
+        name: doc.name,
+        type: doc.type,
+        issuer: doc.issuer,
+        issuedDate: doc.issuedDate,
+        expiryDate: doc.expiryDate,
+      }))
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/documents/import-digilocker - Real DigiLocker import with document selection
 router.post('/import-digilocker', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { selectedDocIds } = req.body;
+    const userId = req.user!.userId;
+
+    if (!selectedDocIds || !Array.isArray(selectedDocIds) || selectedDocIds.length === 0) {
+      res.status(400).json({ error: 'No documents selected' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user || !user.digilockerAccessToken) {
+      res.status(401).json({ error: 'DigiLocker not connected' });
+      return;
+    }
+
+    // Fetch all available documents from DigiLocker
+    const availableDocs = await fetchDigiLockerDocuments(user.digilockerAccessToken);
+
+    // Filter to only selected documents
+    const docsToImport = availableDocs.filter(doc => selectedDocIds.includes(doc.id));
+
+    const created = [];
+    for (const doc of docsToImport) {
+      try {
+        // Download document from DigiLocker
+        let fileBuffer: Buffer | null = null;
+        let fileSize = 0;
+        
+        try {
+          fileBuffer = await downloadDigiLockerDocument(user.digilockerAccessToken, doc.id);
+          fileSize = fileBuffer.length;
+        } catch (downloadErr) {
+          console.warn(`Failed to download ${doc.name}, proceeding without file`);
+        }
+
+        // Save file locally if downloaded
+        let localPath = null;
+        if (fileBuffer) {
+          const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}.pdf`;
+          const uploadDir = path.join(process.cwd(), 'uploads');
+          if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+          
+          localPath = filename;
+          fs.writeFileSync(path.join(uploadDir, filename), fileBuffer);
+        }
+
+        // Create document record in database
+        const createdDoc = await prisma.document.create({
+          data: {
+            userId,
+            name: doc.name,
+            documentType: mapDigiLockerDocType(doc.type),
+            originalFilename: `${doc.name.toLowerCase().replace(/ /g, '_')}.pdf`,
+            uploadSource: 'digilocker',
+            fileSizeBytes: fileSize || null,
+            mimeType: 'application/pdf',
+            localPath,
+            ocrExtractedFields: JSON.stringify({
+              issuer: doc.issuer,
+              issuedDate: doc.issuedDate,
+              expiryDate: doc.expiryDate,
+              digilockerDocId: doc.id,
+            }),
+          },
+        });
+
+        created.push(createdDoc);
+      } catch (docErr: any) {
+        console.error(`Failed to import document ${doc.name}:`, docErr.message);
+      }
+    }
+
+    // Mark user as DigiLocker linked
+    await prisma.user.update({
+      where: { id: userId },
+      data: { digilockerLinked: true },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        userId,
+        eventType: 'document',
+        title: 'DigiLocker Documents Imported',
+        description: `Imported ${created.length} documents from DigiLocker`,
+        entityName: 'DigiLocker',
+        entityType: 'import',
+      },
+    });
+
+    broadcastToUser(userId, 'digilocker_imported', { count: created.length });
+
+    res.json({
+      success: true,
+      message: `Imported ${created.length} documents from DigiLocker`,
+      data: created.map(d => ({ ...d, ocrExtractedFields: d.ocrExtractedFields ? JSON.parse(d.ocrExtractedFields) : null })),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── LEGACY MOCK ENDPOINT (kept for backwards compatibility) ────────────────────
+// POST /api/documents/import-digilocker-mock - Mock DigiLocker import (for testing)
+router.post('/import-digilocker-mock', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
     const mockDocuments = [
