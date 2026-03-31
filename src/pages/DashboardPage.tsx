@@ -3,6 +3,7 @@ import { TrustIndex } from '../components/TrustIndex';
 import { StatCard } from '../components/StatCard';
 import { VerificationHistory } from '../components/VerificationHistory';
 import { SuggestionBanner } from '../components/SuggestionBanner';
+import { LifeInsightsWidget } from '../components/LifeInsightsWidget';
 import { Folder, Key, CircleAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useApi } from '../hooks/useApi';
@@ -115,6 +116,7 @@ export function DashboardPage() {
           transition={{ delay: 0.2 }}
           className="col-span-12 lg:col-span-8 space-y-8"
         >
+          <LifeInsightsWidget />
           <VerificationHistory />
           <SuggestionBanner />
         </motion.div>
