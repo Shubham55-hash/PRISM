@@ -18,6 +18,12 @@ export interface Identity {
   trustScore: number;
   profilePhotoUrl: string | null;
   pendingRequests: number;
+  bloodGroup: string | null;
+  allergies: string | null;
+  medicalConditions: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  emergencyContactRelation: string | null;
   _count?: { documents: number; consents: number };
 }
 

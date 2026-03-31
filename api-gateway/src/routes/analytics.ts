@@ -9,11 +9,12 @@ router.get('/summary', authenticate, async (req: AuthRequest, res: Response): Pr
   try {
     const userId = req.user!.userId;
 
-    const [user, totalDocuments, verifiedDocuments, activeConsents, trustScoreHistory] = await Promise.all([
+    const [user, totalDocuments, verifiedDocuments, activeConsents, pendingRequests, trustScoreHistory] = await Promise.all([
       prisma.user.findUnique({ where: { id: userId }, select: { trustScore: true } }),
       prisma.document.count({ where: { userId } }),
       prisma.document.count({ where: { userId, isVerified: true } }),
       prisma.consent.count({ where: { userId, status: 'active' } }),
+      prisma.consent.count({ where: { userId, status: 'pending' } }),
       prisma.trustScoreHistory.findMany({
         where: { userId },
         orderBy: [{ year: 'asc' }, { month: 'asc' }],
@@ -31,6 +32,7 @@ router.get('/summary', authenticate, async (req: AuthRequest, res: Response): Pr
         totalDocuments,
         verifiedDocuments,
         activeConsents,
+        pendingRequests,
         trustScore: user.trustScore,
         trustScoreHistory
       }

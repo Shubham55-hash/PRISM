@@ -34,10 +34,14 @@ router.get('/profile', authenticate, async (req: AuthRequest, res: Response): Pr
         name: user.fullName,
         age: user.dateOfBirth ? Math.floor((Date.now() - new Date(user.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null,
         phone: user.phone,
-        bloodGroup: extractBloodGroup(user),
-        allergies: 'Penicillin (mock)',
-        medicalConditions: 'None recorded (mock)',
-        emergencyContact,
+        bloodGroup: user.bloodGroup || extractBloodGroup(user),
+        allergies: user.allergies || 'None recorded',
+        medicalConditions: user.medicalConditions || 'None recorded',
+        emergencyContact: {
+          name: user.emergencyContactName || 'Not set',
+          phone: user.emergencyContactPhone || 'Not set',
+          relation: user.emergencyContactRelation || 'Not set'
+        },
         aadhaarHash: user.aadhaarHash,
         abhaId: user.abhaId,
         medicalDocuments: user.documents,

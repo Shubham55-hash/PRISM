@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios';
 
-export const BASE_URL = 'http://localhost:4000';
+export const BASE_URL = 'http://127.0.0.1:4000';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
