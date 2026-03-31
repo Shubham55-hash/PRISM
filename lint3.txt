@@ -1,0 +1,7 @@
+﻿
+> react-example@0.0.0 lint
+> tsc --noEmit
+
+src/pages/DocumentsPage.tsx(260,47): error TS2339: Property 'ocrExtractedFields' does not exist on type 'Document'.
+src/pages/DocumentsPage.tsx(260,96): error TS2339: Property 'ocrExtractedFields' does not exist on type 'Document'.
+src/pages/DocumentsPage.tsx(260,122): error TS2339: Property 'ocrExtractedFields' does not exist on type 'Document'.

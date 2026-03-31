@@ -15,6 +15,7 @@ export interface Document {
   createdAt: string;
   sizeFormatted: string;
   dateAdded: string;
+  ocrExtractedFields?: any;
 }
 
 export interface DocumentsResponse {

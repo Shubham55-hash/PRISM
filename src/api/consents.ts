@@ -21,6 +21,6 @@ export const getConsents = (status?: string) => api.get<Consent[]>('/api/consent
 export const createConsent = (data: { institutionName: string; purpose: string; accessTier?: number; allowedFields?: string[]; expiryDays?: number; institutionLogoUrl?: string }) =>
   api.post<{ message: string; consent: Consent }>('/api/consents', data).then(res => res.data);
 export const getConsentById = (id: string) => api.get<Consent & { auditLog: any[] }>(`/api/consents/${id}`).then(res => res.data);
-export const revokeConsent = (id: string) => api.delete<{ message: string }>(`/api/consents/${id}`).then(res => res.data);
+export const revokeConsent = (id: string) => api.patch<{ message: string }>(`/api/consents/${id}/revoke`).then(res => res.data);
 export const extendConsent = (id: string, additionalDays?: number) => api.post(`/api/consents/${id}/extend`, { additionalDays }).then(res => res.data);
 export const getConsentAuditLog = () => api.get<any[]>('/api/consents/audit-log').then(res => res.data);
