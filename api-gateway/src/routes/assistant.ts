@@ -61,16 +61,6 @@ async function generateSuggestions(userId: string): Promise<Array<{ title: strin
     });
   }
 
-  // Rule 4: DigiLocker integration
-  if (!user.digilockerLinked && user.documents.length >= 2) {
-    suggestions.push({
-      title: 'Link Your DigiLocker',
-      description: 'Sync official documents directly from your DigiLocker vault to PRISM.',
-      priority: 'medium',
-      icon: '🔗'
-    });
-  }
-
   // Rule 5: Consent management
   if (user.consents.length === 0 && user.documents.length > 2) {
     suggestions.push({

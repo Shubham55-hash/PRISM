@@ -30,7 +30,6 @@ export function DocumentsPage() {
   const [extractingId, setExtractingId] = useState<string | null>(null);
   const [extractedModal, setExtractedModal] = useState<any>(null);
   const [digilockerModalOpen, setDigilockerModalOpen] = useState(false);
-  const [digilockerConnected, setDigilockerConnected] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data, loading, refetch } = useApi(
@@ -38,25 +37,7 @@ export function DocumentsPage() {
     [search, typeFilter, page]
   );
 
-  // Check DigiLocker connection status on mount
-  useEffect(() => {
-    checkDigiLockerStatus();
-  }, []);
 
-  const checkDigiLockerStatus = async () => {
-    // This would typically be a dedicated API call to check if user has DigiLocker connected
-    // For now, we check from user profile data if available
-    try {
-      // TODO: Add endpoint to check DigiLocker connection status
-      const response = await fetch('/api/user/profile', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('prism_token')}` }
-      });
-      const userData = await response.json();
-      setDigilockerConnected(userData.digilockerLinked || false);
-    } catch (err) {
-      console.error('Failed to check DigiLocker status:', err);
-    }
-  };
 
   const handleExtract = async (docId: string, docName: string) => {
     setExtractingId(docId);
@@ -93,11 +74,7 @@ export function DocumentsPage() {
     setDigilockerModalOpen(true);
   };
 
-  const handleDigiLockerSuccess = (count: number) => {
-    refetch();
-    checkDigiLockerStatus();
-    alert(`Imported ${count} documents from DigiLocker!`);
-  };
+
 
   const performUpload = async (file: File) => {
     setUploading(true);
@@ -530,8 +507,6 @@ export function DocumentsPage() {
       <DigiLockerModal 
         isOpen={digilockerModalOpen}
         onClose={() => setDigilockerModalOpen(false)}
-        onSuccess={handleDigiLockerSuccess}
-        isConnected={digilockerConnected}
       />
     </div>
   );

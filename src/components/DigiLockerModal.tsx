@@ -1,331 +1,173 @@
-import React, { useState, useEffect } from 'react';
-import { X, Download, Loader, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, ExternalLink, Info, CheckCircle2, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { initiateDigiLockerAuth, fetchDigiLockerDocuments, importSelectedDigiLockerDocs, DigiLockerDocument } from '../api/documents';
+import { initiateDigiLockerAuth } from '../api/documents';
 
 interface DigiLockerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (count: number) => void;
-  isConnected: boolean;
 }
 
-export function DigiLockerModal({ isOpen, onClose, onSuccess, isConnected }: DigiLockerModalProps) {
-  const [step, setStep] = useState<'auth' | 'select' | 'importing'>(isConnected ? 'select' : 'auth');
-  const [documents, setDocuments] = useState<DigiLockerDocument[]>([]);
-  const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
+export function DigiLockerModal({ isOpen, onClose }: DigiLockerModalProps) {
+  const [step, setStep] = useState<'info' | 'redirected'>('info');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const [authUrl, setAuthUrl] = useState<string>('');
 
-  // Fetch documents when modal opens and user is connected
-  useEffect(() => {
-    if (isOpen && isConnected && step === 'select') {
-      fetchAvailableDocs();
-    }
-  }, [isOpen, isConnected, step]);
-
-  const fetchAvailableDocs = async () => {
+  const handleOpenPortal = async () => {
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('prism_token');
-      if (!token) {
-        setError('Session expired. Please log in again.');
-        setLoading(false);
-        return;
-      }
-
-      const result = await fetchDigiLockerDocuments();
-      if (result.success) {
-        setDocuments(result.documents);
-        if (result.documents.length === 0) {
-          setError('No documents available in your DigiLocker account');
-        }
-      } else {
-        setError('Failed to fetch documents from DigiLocker');
-      }
-    } catch (err: any) {
-      const errorMsg = err?.message || 'Error fetching documents';
-      if (errorMsg.includes('401') || errorMsg.includes('Invalid') || errorMsg.includes('token')) {
-        setError('Session expired. Please log in again.');
-      } else {
-        setError(errorMsg);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAuthorize = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const token = localStorage.getItem('prism_token');
-      if (!token) {
-        setError('Please log in first to connect DigiLocker');
-        setLoading(false);
-        return;
-      }
-
       const result = await initiateDigiLockerAuth();
-      setAuthUrl(result.authUrl);
-      // Open DigiLocker in new window
-      const popup = window.open(result.authUrl, 'DigiLockerAuth', 'width=500,height=600');
-      
-      if (!popup) {
-        setError('Pop-up blocked. Please allow pop-ups and try again.');
-        setLoading(false);
-        return;
-      }
-
-      // Check if authorization completed
-      const checkInterval = setInterval(() => {
-        if (popup?.closed) {
-          clearInterval(checkInterval);
-          setLoading(false);
-          // Try to fetch documents after returning from DigiLocker
-          setTimeout(() => {
-            setStep('select');
-            fetchAvailableDocs();
-          }, 1000);
-        }
-      }, 1000);
+      // Open DigiLocker in a new tab
+      window.open(result.authUrl, '_blank');
+      setStep('redirected');
     } catch (err: any) {
-      const errorMsg = err?.message || 'Authorization failed';
-      console.error('[DigiLocker] Authorization error:', {
-        message: errorMsg,
-        status: err?.status,
-        statusText: err?.statusText,
-        fullError: err
-      });
-      if (errorMsg.includes('401') || errorMsg.includes('Invalid') || errorMsg.includes('token')) {
-        setError('Session expired. Please log in again.');
-      } else {
-        setError(errorMsg);
-      }
-      setLoading(false);
-    }
-  };
-
-  const toggleDocument = (docId: string) => {
-    const newSelected = new Set(selectedDocs);
-    if (newSelected.has(docId)) {
-      newSelected.delete(docId);
-    } else {
-      newSelected.add(docId);
-    }
-    setSelectedDocs(newSelected);
-  };
-
-  const handleImport = async () => {
-    if (selectedDocs.size === 0) {
-      setError('Please select at least one document');
-      return;
-    }
-
-    setStep('importing');
-    setLoading(true);
-    setError('');
-
-    try {
-      const result = await importSelectedDigiLockerDocs(Array.from(selectedDocs));
-      if (result.success) {
-        onSuccess(result.data.length);
-        onClose();
-      } else {
-        setError('Import failed');
-        setStep('select');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Import failed');
-      setStep('select');
+      setError(err?.message || 'Failed to get portal link');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleRefresh = () => {
-    setDocuments([]);
-    setSelectedDocs(new Set());
-    fetchAvailableDocs();
   };
 
   if (!isOpen) return null;
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl"
+          initial={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          exit={{ opacity: 0, translateY: 20 }}
+          className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl relative overflow-hidden"
         >
-          {/* Header */}
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-gray-900">DigiLocker Import</h2>
-            <button
-              onClick={onClose}
-              className="rounded-lg p-2 hover:bg-gray-100"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Error Alert */}
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-4 flex items-start gap-3 rounded-lg bg-red-50 p-4 text-red-700"
-            >
-              <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="font-medium">Error</p>
-                <p className="text-sm">{error}</p>
-                {error.includes('Session expired') && (
-                  <button
-                    onClick={() => {
-                      localStorage.removeItem('prism_token');
-                      localStorage.removeItem('prism_refresh');
-                      window.location.href = '/login';
-                    }}
-                    className="mt-2 inline-block text-sm font-semibold underline hover:no-underline"
-                  >
-                    Log In Again
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Authorization Step */}
-          {step === 'auth' && (
-            <div className="space-y-4">
-              <p className="text-gray-600">
-                Connect your DigiLocker account to import official documents directly. You'll be asked to provide your credentials on the DigiLocker website.
-              </p>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800 text-sm italic">
-                "Login to DigiLocker and download your documents, then upload here for secure import."
+          {/* Decorative background element */}
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-amber-50" />
+          
+          <div className="relative z-10">
+            {/* Header */}
+            <div className="mb-8 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                  <ExternalLink size={24} />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">Official Portal Access</h2>
               </div>
               <button
-                onClick={handleAuthorize}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-3 font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+                onClick={onClose}
+                className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
               >
-                {loading ? (
-                  <>
-                    <Loader className="h-5 w-5 animate-spin" />
-                    Connecting...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-5 w-5" />
-                    Connect DigiLocker
-                  </>
-                )}
+                <X size={20} />
               </button>
-              <p className="text-xs text-gray-500">
-                A popup window will open where you can log in with your credentials.
-              </p>
             </div>
-          )}
 
-          {/* Document Selection Step */}
-          {step === 'select' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-gray-600">
-                  Select documents to import from your DigiLocker account:
-                </p>
+            {step === 'info' ? (
+              <div className="space-y-6">
+                <div className="rounded-xl bg-amber-50 p-5 border border-amber-100">
+                  <div className="flex gap-3">
+                    <Info className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-amber-900 font-medium">
+                      Privacy-First Document Import
+                    </p>
+                  </div>
+                  <p className="mt-2 text-sm text-amber-800 leading-relaxed">
+                    PRISM prioritizes your privacy. Instead of linking accounts, we guide you to 
+                    manually download your documents from the official portal and upload them 
+                    locally to your vault.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-gray-900">How it works:</h3>
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Offline Flow</span>
+                  </div>
+                  <ol className="space-y-3 text-sm text-gray-600">
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">1</span>
+                      <span>Open the official DigiLocker portal.</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">2</span>
+                      <span>Download your documents as PDF or Image.</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">3</span>
+                      <span>Upload them here for AI extraction.</span>
+                    </li>
+                  </ol>
+                </div>
+
+                {error && (
+                  <p className="text-sm font-medium text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">
+                    {error}
+                  </p>
+                )}
+
                 <button
-                  onClick={handleRefresh}
+                  onClick={handleOpenPortal}
                   disabled={loading}
-                  className="text-sm text-amber-600 hover:text-amber-700 disabled:opacity-50"
-                >
-                  Refresh
-                </button>
-              </div>
-
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader className="h-6 w-6 animate-spin text-amber-600" />
-                </div>
-              ) : documents.length === 0 ? (
-                <div className="rounded-lg bg-gray-50 p-8 text-center">
-                  <p className="text-gray-600">No documents available in your DigiLocker account</p>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {documents.map(doc => (
-                    <label
-                      key={doc.id}
-                      className="flex items-start gap-3 rounded-lg border border-gray-200 p-4 hover:bg-gray-50 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedDocs.has(doc.id)}
-                        onChange={() => toggleDocument(doc.id)}
-                        className="mt-1 h-4 w-4 rounded border-gray-300 text-amber-600"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900">{doc.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {doc.issuer} {doc.issuedDate && `• Issued: ${new Date(doc.issuedDate).toLocaleDateString()}`}
-                        </p>
-                        {doc.expiryDate && (
-                          <p className="text-xs text-gray-400">
-                            Expires: {new Date(doc.expiryDate).toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
-                      <span className="ml-2 inline-block rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-                        {doc.type}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={onClose}
-                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleImport}
-                  disabled={loading || selectedDocs.size === 0}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+                  className="w-full group flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-6 py-4 font-bold text-white shadow-lg shadow-amber-200 transition-all hover:bg-amber-700 hover:shadow-amber-300 disabled:opacity-50 active:scale-[0.98]"
                 >
                   {loading ? (
                     <>
-                      <Loader className="h-4 w-4 animate-spin" />
-                      Importing...
+                      <Loader className="h-5 w-5 animate-spin mr-2" />
+                      Connecting...
                     </>
                   ) : (
                     <>
-                      <Download className="h-4 w-4" />
-                      Import {selectedDocs.size > 0 ? `(${selectedDocs.size})` : ''}
+                      Open DigiLocker Portal
+                      <ExternalLink className="h-5 w-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                     </>
                   )}
                 </button>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="space-y-8 py-4 text-center">
+                <div className="relative mx-auto h-24 w-24">
+                  <div className="absolute inset-0 animate-ping rounded-full bg-green-100 opacity-75" />
+                  <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-green-100 text-green-600">
+                    <CheckCircle2 size={48} />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700 uppercase tracking-widest">
+                    Portal Active / Connected
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Success!</h3>
+                  <p className="text-gray-600 max-w-xs mx-auto">
+                    You are now connected to the official portal in the other tab.
+                  </p>
+                </div>
+                
+                <div className="rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 p-6 flex flex-col items-center">
+                  <div className="p-3 rounded-full bg-amber-100 text-amber-600 mb-3">
+                    <Upload size={24} />
+                  </div>
+                  <p className="text-sm font-bold text-amber-900">
+                    Ready for your documents
+                  </p>
+                  <p className="text-xs text-amber-600 mt-1">
+                    Once you've downloaded your files, close this window and use the "Upload" button.
+                  </p>
+                </div>
 
-          {/* Importing Step */}
-          {step === 'importing' && (
-            <div className="space-y-4 text-center py-8">
-              <Loader className="h-12 w-12 animate-spin text-amber-600 mx-auto" />
-              <p className="text-gray-600 font-medium">Importing documents...</p>
-              <p className="text-sm text-gray-500">This may take a few moments</p>
-            </div>
-          )}
+                <button
+                  onClick={onClose}
+                  className="w-full rounded-xl bg-gray-900 px-6 py-4 font-bold text-white transition-all hover:bg-black active:scale-[0.98] shadow-lg shadow-gray-200"
+                >
+                  Return to Vault
+                </button>
+              </div>
+            )}
+          </div>
         </motion.div>
       </div>
     </AnimatePresence>
   );
 }
+
+const Loader = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+  </svg>
+);

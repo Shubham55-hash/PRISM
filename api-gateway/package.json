@@ -10,6 +10,7 @@
     "db:setup": "prisma migrate dev --name init && tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.81.0",
     "@prisma/client": "^5.22.0",
     "axios": "^1.7.2",
     "bcryptjs": "^2.4.3",

@@ -58,28 +58,10 @@ export const extractDocument = (id: string) =>
 export const confirmExtraction = (id: string, extractedData: any) =>
   api.post<{ success: boolean; message: string; data: any }>(`/api/documents/${id}/extract/confirm`, { extractedData }).then(res => res.data);
 
-// ─── DigiLocker OAuth Endpoints ────────────────────────────────────────────
+// ─── DigiLocker Guided Flow Endpoints ──────────────────────────────────────────
 
 /**
- * Initiate DigiLocker OAuth flow
+ * Get the public DigiLocker portal URL for the manual guided flow
  */
 export const initiateDigiLockerAuth = () =>
-  api.get<{ authUrl: string; state: string }>('/api/documents/digilocker/authorize').then(res => res.data);
-
-/**
- * Fetch available documents from connected DigiLocker account
- */
-export const fetchDigiLockerDocuments = () =>
-  api.get<{ success: boolean; documents: DigiLockerDocument[] }>('/api/documents/digilocker/documents').then(res => res.data);
-
-/**
- * Import selected documents from DigiLocker
- */
-export const importSelectedDigiLockerDocs = (selectedDocIds: string[]) =>
-  api.post<{ success: boolean; message: string; data: Document[] }>('/api/documents/import-digilocker', { selectedDocIds }).then(res => res.data);
-
-/**
- * Legacy: Import mock DigiLocker documents (for testing without real DigiLocker credentials)
- */
-export const importMockDigiLockerDocs = () =>
-  api.post<{ success: boolean; message: string; data: Document[] }>('/api/documents/import-digilocker-mock').then(res => res.data);
+  api.get<{ authUrl: string }>('/api/documents/digilocker/authorize').then(res => res.data);
