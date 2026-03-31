@@ -3,6 +3,7 @@ import { FileText, Search, Filter, Download, Eye, MoreVertical, CheckCircle2, Cl
 import { motion, AnimatePresence } from 'motion/react';
 import { useApi } from '../hooks/useApi';
 import { documentsApi } from '../api/documents';
+import { BASE_URL } from '../api/client';
 
 const TYPE_COLORS: Record<string, string> = {
   identity: 'bg-primary/10 text-primary',
@@ -58,6 +59,51 @@ export function DocumentsPage() {
     if (!confirm('Delete this document?')) return;
     await documentsApi.delete(id);
     refetch();
+  };
+
+  const handleView = async (id: string) => {
+    try {
+      const token = localStorage.getItem('prism_token');
+      // Ask backend for the download URL; then open in a new tab
+      const res = await documentsApi.getDownloadUrl(id);
+      if (res.downloadUrl) {
+        // Relative URL from backend — prepend BASE_URL
+        const url = res.downloadUrl.startsWith('http') ? res.downloadUrl : `${BASE_URL}${res.downloadUrl}`;
+        window.open(url, '_blank');
+      }
+    } catch {
+      // Fallback: open direct download endpoint in new tab with auth header not possible,
+      // so open via anchor — user will see JSON for seeded docs, actual file for uploads
+      window.open(`${BASE_URL}/api/documents/${id}/download`, '_blank');
+    }
+  };
+
+  const handleDownload = async (id: string, filename: string) => {
+    try {
+      const token = localStorage.getItem('prism_token');
+      const response = await fetch(`${BASE_URL}/api/documents/${id}/download`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) throw new Error('Download failed');
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        // Backend returned a URL (seeded doc without physical file)
+        const data = await response.json();
+        window.open(data.downloadUrl?.startsWith('http') ? data.downloadUrl : `${BASE_URL}${data.downloadUrl}`, '_blank');
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(`${BASE_URL}/api/documents/${id}/download`, '_blank');
+    }
   };
 
   const docs = data?.documents || [];
@@ -190,10 +236,18 @@ export function DocumentsPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="p-2 hover:bg-surface-container rounded-full text-primary">
+                          <button
+                            onClick={() => handleView(doc.id)}
+                            title="View document"
+                            className="p-2 hover:bg-surface-container rounded-full text-primary"
+                          >
                             <Eye className="w-4 h-4" />
                           </button>
-                          <button className="p-2 hover:bg-surface-container rounded-full text-primary">
+                          <button
+                            onClick={() => handleDownload(doc.id, doc.originalFilename || doc.name)}
+                            title="Download document"
+                            className="p-2 hover:bg-surface-container rounded-full text-primary"
+                          >
                             <Download className="w-4 h-4" />
                           </button>
                           <button onClick={() => handleDelete(doc.id)} className="p-2 hover:bg-error/10 rounded-full text-error">

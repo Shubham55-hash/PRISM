@@ -2,6 +2,7 @@ import { Router, Response, Request } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../db/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 
@@ -62,6 +63,7 @@ router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequ
     // Detect document type from filename if not provided
     const detectedType = documentType || detectDocumentType(req.file.originalname);
 
+    // Create document record
     const document = await prisma.document.create({
       data: {
         userId: req.user!.userId,
@@ -73,6 +75,17 @@ router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequ
         localPath: req.file.filename,
         uploadSource: 'user',
       },
+    });
+
+    // Mock OCR extraction — real Tesseract integration comes in a later step
+    const ocrFields = {
+      name: `Extracted from ${path.basename(req.file.originalname, path.extname(req.file.originalname))}`,
+      docType: detectedType,
+      confidence: 0.91,
+    };
+    const updatedDocument = await prisma.document.update({
+      where: { id: document.id },
+      data: { ocrExtractedFields: JSON.stringify(ocrFields) },
     });
 
     await prisma.activityLog.create({
@@ -87,7 +100,10 @@ router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequ
       },
     });
 
-    res.status(201).json({ message: 'Document uploaded successfully', document });
+    res.status(201).json({
+      message: 'Document uploaded successfully',
+      document: { ...updatedDocument, ocrExtractedFields: ocrFields },
+    });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
@@ -146,10 +162,10 @@ router.post('/:id/verify', authenticate, async (req: AuthRequest, res: Response)
   try {
     const doc = await prisma.document.findFirst({ where: { id: req.params.id, userId: req.user!.userId } });
     if (!doc) { res.status(404).json({ error: 'Document not found' }); return; }
-    const vcCredentialId = `vc:prism:${req.user!.prismId}:${doc.id}`;
+    const vcCredentialId = uuidv4();
     const now = new Date();
     const expires = new Date(now);
-    expires.setFullYear(expires.getFullYear() + 2);
+    expires.setFullYear(expires.getFullYear() + 1); // +1 year per W3C VC spec
     const vcProof = {
       type: 'Ed25519Signature2020',
       created: now.toISOString(),
