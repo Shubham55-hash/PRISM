@@ -5,6 +5,7 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../db/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { broadcastToUser } from '../utils/websocket';
 
 const router = Router();
 
@@ -99,6 +100,12 @@ router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequ
         documentId: document.id,
       },
     });
+    
+    // Broadcast real-time update
+    broadcastToUser(req.user!.userId, 'document_uploaded', { 
+      documentId: document.id, 
+      name: docName 
+    });
 
     res.status(201).json({
       message: 'Document uploaded successfully',
@@ -178,6 +185,13 @@ router.post('/:id/verify', authenticate, async (req: AuthRequest, res: Response)
     });
     await prisma.activityLog.create({
       data: { userId: req.user!.userId, eventType: 'verification', title: 'Document Verified', description: `W3C VC issued for ${doc.name}`, documentId: doc.id },
+    });
+    
+    // Broadcast real-time update
+    broadcastToUser(req.user!.userId, 'document_verified', { 
+      documentId: doc.id, 
+      name: doc.name,
+      vcCredentialId 
     });
     res.json({ message: 'Verifiable Credential issued', vcCredentialId, isVerified: true, document: updated });
   } catch (err: any) { res.status(500).json({ error: err.message }); }

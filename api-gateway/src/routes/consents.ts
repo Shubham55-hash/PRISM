@@ -2,6 +2,7 @@ import { Router, Response, Request } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../db/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { broadcastToUser } from '../utils/websocket';
 
 const router = Router();
 
@@ -39,6 +40,12 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response): Promise<
         expiresAt: new Date(expiresAt),
       },
     });
+    
+    // Broadcast real-time update
+    broadcastToUser(req.user!.userId, 'consent_granted', { 
+      consentId: consent.id, 
+      institutionName 
+    });
 
     res.status(201).json({ success: true, message: 'Consent created successfully', data: consent });
   } catch (err: any) {
@@ -58,6 +65,12 @@ router.patch('/:id/revoke', authenticate, async (req: AuthRequest, res: Response
     const updated = await prisma.consent.update({
       where: { id: req.params.id },
       data: { status: 'revoked', revokedAt: new Date() },
+    });
+    
+    // Broadcast real-time update
+    broadcastToUser(req.user!.userId, 'consent_revoked', { 
+      consentId: updated.id, 
+      institutionName: updated.institutionName 
     });
 
     res.json({ success: true, message: 'Consent revoked', data: updated });

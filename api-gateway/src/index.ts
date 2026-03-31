@@ -44,43 +44,10 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', version: '1.0.0', ser
 // ── 404 Handler ──────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
+import { initWebSocket } from './utils/websocket';
+
 // ── WebSocket Server ─────────────────────────────────────────────────────────
-const wss = new WebSocketServer({ server });
-const clients = new Map<string, Set<WebSocket>>();
-
-wss.on('connection', (ws, req) => {
-  const url = new URL(req.url || '/', `http://localhost:${PORT}`);
-  const userId = url.searchParams.get('userId') || 'anonymous';
-  if (!clients.has(userId)) clients.set(userId, new Set());
-  clients.get(userId)!.add(ws);
-  console.log(`[WS] Client connected: ${userId} (${clients.get(userId)!.size} connections)`);
-
-  ws.on('message', (data) => {
-    try {
-      const msg = JSON.parse(data.toString());
-      if (msg.type === 'ping') ws.send(JSON.stringify({ type: 'pong' }));
-    } catch {}
-  });
-
-  ws.on('close', () => {
-    clients.get(userId)?.delete(ws);
-    console.log(`[WS] Client disconnected: ${userId}`);
-  });
-
-  // Send welcome
-  ws.send(JSON.stringify({ event: 'connected', data: { message: 'PRISM WebSocket active', userId } }));
-});
-
-// Export broadcast function for use in routes
-export function broadcastToUser(userId: string, event: string, data: any) {
-  const userClients = clients.get(userId);
-  if (userClients) {
-    const payload = JSON.stringify({ event, data, timestamp: new Date().toISOString() });
-    userClients.forEach(ws => {
-      if (ws.readyState === WebSocket.OPEN) ws.send(payload);
-    });
-  }
-}
+initWebSocket(server);
 
 // ── Start ────────────────────────────────────────────────────────────────────
 server.listen(PORT, () => {

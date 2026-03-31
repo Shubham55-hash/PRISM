@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../db/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 
@@ -23,8 +24,8 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-// PUT /api/identity
-router.put('/', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+// PATCH /api/identity/profile
+router.patch('/profile', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { fullName, displayName, email, phone, dateOfBirth, addressLine, city, state } = req.body;
     const user = await prisma.user.update({
@@ -35,6 +36,48 @@ router.put('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
       data: { userId: user.id, eventType: 'security', title: 'Profile Updated', description: 'Personal details updated' },
     });
     res.json({ message: 'Profile updated', user });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/identity/change-password
+router.post('/change-password', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: 'currentPassword and newPassword are required' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+    if (!user) { res.status(404).json({ error: 'User not found' }); return; }
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) { res.status(401).json({ error: 'Current password is incorrect' }); return; }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+    
+    await prisma.activityLog.create({
+      data: { userId: user.id, eventType: 'security', title: 'Password Changed', description: 'Account password updated securely' },
+    });
+
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/identity/account
+router.delete('/account', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    // Manual cascading deletion (safest route without modifying Prisma schema)
+    await prisma.activityLog.deleteMany({ where: { userId } });
+    await prisma.consent.deleteMany({ where: { userId } });
+    await prisma.document.deleteMany({ where: { userId } });
+    await prisma.trustScoreHistory.deleteMany({ where: { userId } });
+    
+    await prisma.user.delete({ where: { id: userId } });
+    
+    res.json({ success: true, message: 'Account deleted permanently' });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 

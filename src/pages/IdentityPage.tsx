@@ -1,8 +1,8 @@
-import React from 'react';
 import { Shield, Fingerprint, Mail, Phone, MapPin, Calendar, Loader } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useApi } from '../hooks/useApi';
 import { identityApi } from '../api/identity';
+import { Skeleton } from '../components/Skeleton';
 
 export function IdentityPage() {
   const { data: identity, loading: idLoading } = useApi(() => identityApi.getIdentity(), []);
@@ -41,9 +41,7 @@ export function IdentityPage() {
             <div className="flex gap-6 items-center mb-12">
               <div className="w-24 h-24 rounded-xl border-2 border-prism-accent/30 overflow-hidden">
                 {cardLoading ? (
-                  <div className="w-full h-full bg-prism-accent/10 flex items-center justify-center">
-                    <Loader className="w-6 h-6 text-prism-accent animate-spin" />
-                  </div>
+                  <Skeleton className="w-full h-full bg-white/10" />
                 ) : (
                   <img
                     src={prismId?.profilePhotoUrl || identity?.profilePhotoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'}
@@ -53,24 +51,29 @@ export function IdentityPage() {
                   />
                 )}
               </div>
-              <div>
-                <p className="text-2xl font-headline font-bold">
-                  {cardLoading ? '…' : (prismId?.fullName || identity?.fullName || 'Loading…')}
-                </p>
-                <p className="text-sm text-prism-accent/80">
-                  ID: {cardLoading ? '…' : (prismId?.prismId || identity?.prismId || 'PR-XXX-XXX-X')}
-                </p>
+              <div className="flex-1">
+                {cardLoading ? (
+                  <>
+                    <Skeleton className="w-40 h-8 mb-2 bg-white/10" />
+                    <Skeleton className="w-32 h-4 bg-white/10" />
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-headline font-bold">{prismId?.fullName || identity?.fullName || 'Loading…'}</p>
+                    <p className="text-sm text-prism-accent/80">ID: {prismId?.prismId || identity?.prismId || 'PR-XXX-XXX-X'}</p>
+                  </>
+                )}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-auto">
               <div>
                 <p className="text-[10px] uppercase text-prism-accent/60 tracking-wider">Issued On</p>
-                <p className="text-sm font-medium">{prismId?.issuedOn || '—'}</p>
+                {cardLoading ? <Skeleton className="w-16 h-4 bg-white/10" /> : <p className="text-sm font-medium">{prismId?.issuedOn || '—'}</p>}
               </div>
               <div>
                 <p className="text-[10px] uppercase text-prism-accent/60 tracking-wider">Expires</p>
-                <p className="text-sm font-medium">{prismId?.expiresOn || '—'}</p>
+                {cardLoading ? <Skeleton className="w-16 h-4 bg-white/10" /> : <p className="text-sm font-medium">{prismId?.expiresOn || '—'}</p>}
               </div>
             </div>
           </div>
@@ -85,13 +88,19 @@ export function IdentityPage() {
         >
           <h3 className="font-headline text-xl font-bold mb-6">Verified Attributes</h3>
 
-          {idLoading ? (
-            <div className="flex items-center justify-center h-48">
-              <Loader className="w-6 h-6 text-primary animate-spin" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {idLoading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-background border border-outline-variant/5">
+                  <Skeleton className="w-10 h-10 rounded-lg" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="w-20 h-3" />
+                    <Skeleton className="w-32 h-4" />
+                  </div>
+                </div>
+              ))
+            ) : (
+              [
                 { icon: Mail, label: 'Email Address', value: identity?.email || '—' },
                 { icon: Phone, label: 'Phone Number', value: identity?.phone || '—' },
                 { icon: MapPin, label: 'Primary Residence', value: cityState },
@@ -108,9 +117,9 @@ export function IdentityPage() {
                     <p className="text-sm font-semibold text-on-surface">{item.value}</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
 
           <button className="mt-8 w-full py-4 border-2 border-dashed border-outline-variant rounded-xl text-secondary font-bold text-sm hover:bg-surface-container transition-colors">
             + Link New Credential via DigiLocker

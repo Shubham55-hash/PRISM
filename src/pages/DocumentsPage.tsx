@@ -3,6 +3,7 @@ import { FileText, Search, Download, Eye, CheckCircle2, Clock, Trash2, Loader, X
 import { motion, AnimatePresence } from 'motion/react';
 import { useApi } from '../hooks/useApi';
 import { getDocuments, uploadDocument, verifyDocument, deleteDocument, getDownloadUrl } from '../api/documents';
+import { DocumentRowSkeleton } from '../components/Skeleton';
 import { BASE_URL } from '../api/client';
 
 const TYPE_COLORS: Record<string, string> = {
@@ -231,29 +232,35 @@ export function DocumentsPage() {
         </div>
 
         <div className="overflow-x-auto">
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader className="w-6 h-6 text-primary animate-spin" />
-            </div>
-          ) : docs.length === 0 ? (
-            <div className="text-center py-20 text-secondary">
-              <FileText className="w-12 h-12 mx-auto mb-3 text-outline" />
-              <p className="font-bold">No documents found</p>
-              <p className="text-sm mt-1">Upload your first document to get started</p>
-            </div>
-          ) : (
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-surface-container/30 text-[10px] uppercase tracking-widest text-secondary font-bold">
-                  <th className="px-6 py-4">Name</th>
-                  <th className="px-6 py-4">Category</th>
-                  <th className="px-6 py-4">Size</th>
-                  <th className="px-6 py-4">Added</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-surface-container/30 text-[10px] uppercase tracking-widest text-secondary font-bold">
+                <th className="px-6 py-4">Name</th>
+                <th className="px-6 py-4">Category</th>
+                <th className="px-6 py-4">Size</th>
+                <th className="px-6 py-4">Added</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant/5">
+              {loading ? (
+                <>
+                  <DocumentRowSkeleton />
+                  <DocumentRowSkeleton />
+                  <DocumentRowSkeleton />
+                  <DocumentRowSkeleton />
+                  <DocumentRowSkeleton />
+                </>
+              ) : docs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-20 text-secondary">
+                    <FileText className="w-12 h-12 mx-auto mb-3 text-outline" />
+                    <p className="font-bold">No documents found</p>
+                    <p className="text-sm mt-1">Upload your first document to get started</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/5">
+              ) : (
                 <AnimatePresence>
                   {docs.map((doc, i) => {
                     const isExpanded = expandedDocId === doc.id;
@@ -368,9 +375,9 @@ export function DocumentsPage() {
                     </React.Fragment>
                   )})}
                 </AnimatePresence>
-              </tbody>
-            </table>
-          )}
+              )}
+            </tbody>
+          </table>
         </div>
 
         {/* Pagination */}

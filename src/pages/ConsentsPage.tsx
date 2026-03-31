@@ -3,6 +3,7 @@ import { ShieldCheck, ExternalLink, Clock, Loader, CheckCircle2, XCircle, AlertT
 import { motion, AnimatePresence } from 'motion/react';
 import { useApi } from '../hooks/useApi';
 import { getConsents, revokeConsent, createConsent, Consent } from '../api/consents';
+import { Skeleton } from '../components/Skeleton';
 
 const TIER_LABEL: Record<number, string> = {
   1: 'Partial Access (Tier 1)',
@@ -142,7 +143,12 @@ export function ConsentsPage() {
           <h2 className="font-headline text-4xl font-extrabold text-on-surface tracking-tight">Data Consents</h2>
           <p className="text-secondary font-medium mt-2">
             Control which organizations have access to your digital identity.
-            {!loading && (
+            {loading ? (
+              <span className="ml-2 inline-flex gap-2">
+                <Skeleton className="w-16 h-4" />
+                <Skeleton className="w-16 h-4" />
+              </span>
+            ) : (
               <span className="ml-2">
                 <span className="text-primary font-bold">{activeCount} active</span>
                 {expiredCount > 0 && <span className="text-outline ml-2">{expiredCount} expired</span>}
@@ -159,8 +165,30 @@ export function ConsentsPage() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader className="w-6 h-6 text-primary animate-spin" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/10 shadow-sm flex flex-col gap-4">
+              <div className="flex justify-between items-start">
+                <div className="flex gap-4 items-center">
+                  <Skeleton className="w-12 h-12 rounded-xl" />
+                  <div className="space-y-2">
+                    <Skeleton className="w-32 h-5" />
+                    <Skeleton className="w-48 h-3" />
+                  </div>
+                </div>
+                <Skeleton className="w-16 h-4" />
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="w-full h-8" />
+                <Skeleton className="w-40 h-3" />
+                <Skeleton className="w-48 h-3" />
+              </div>
+              <div className="flex gap-3 mt-4">
+                <Skeleton className="flex-1 h-10" />
+                <Skeleton className="flex-1 h-10" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

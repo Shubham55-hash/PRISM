@@ -1,8 +1,27 @@
 import api from './client';
 
-export const getTrustHistory = () => api.get<{ name: string; score: number }[]>('/api/analytics/trust-trend').then(res => res.data);
-export const getVerificationVelocity = () => api.get<{ name: string; count: number }[]>('/api/analytics/verification-velocity').then(res => res.data);
-export const getDataDistribution = () => api.get<{ name: string; value: number; color: string }[]>('/api/analytics/data-distribution').then(res => res.data);
-export const getNetworkReach = () => api.get<{ institutions: number; verifications: number; totalConnections: number }>('/api/analytics/network-reach').then(res => res.data);
-export const getInsights = () => api.get<{ type: string; title: string; desc: string }[]>('/api/analytics/insights').then(res => res.data);
-export const getSummary = () => api.get<{ totalDocuments: number; activeConsents: number; pendingRequests: number }>('/api/analytics/dashboard-stats').then(res => res.data);
+export interface TrustHistoryItem {
+  year: number;
+  month: number;
+  score: number;
+  id?: string;
+  userId?: string;
+}
+
+export interface AnalyticsSummary {
+  totalDocuments: number;
+  verifiedDocuments: number;
+  activeConsents: number;
+  trustScore: number;
+  trustScoreHistory: TrustHistoryItem[];
+}
+
+export const getSummary = () => api.get<{ data: AnalyticsSummary }>('/api/analytics/summary').then((res: any) => res.data?.data || res.data || res);
+export const getTrustHistory = () => api.get<{ data: TrustHistoryItem[] }>('/api/analytics/trust-history').then((res: any) => res.data?.data || res.data || res);
+
+// Mock endpoints for UI fillers not yet in API Gateway
+export const getNetworkReach = () => Promise.resolve({ institutions: 12, verifications: 89, totalConnections: 45 });
+export const getInsights = () => Promise.resolve([
+  { type: 'security', title: 'Security Boost', desc: 'Linking Aadhaar increased your score.' },
+  { type: 'vault', title: 'Storage Alert', desc: 'You have 3 unstructured docs.' }
+]);
