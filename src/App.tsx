@@ -9,6 +9,8 @@ import { ConsentsPage } from './pages/ConsentsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ActivityPage } from './pages/ActivityPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
+import { AutofillPage } from './pages/AutofillPage';
+import { AutofillTestPage } from './pages/AutofillTestPage';
 import { LoginPage } from './pages/LoginPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Plus, Loader } from 'lucide-react';
@@ -80,6 +82,8 @@ function AppLayout() {
               <Route path="/identity" element={<IdentityPage />} />
               <Route path="/documents" element={<DocumentsPage />} />
               <Route path="/consents" element={<ConsentsPage />} />
+              <Route path="/autofill" element={<AutofillPage />} />
+              <Route path="/autofill-test" element={<AutofillTestPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

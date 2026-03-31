@@ -1,0 +1,85 @@
+﻿node.exe : node:internal/m
+odules/cjs/loader:1456
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (n  
+  ode:internal/modules/   
+ cjs/loader:1456:Strin    
+g) [], RemoteExceptio    n
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+  const err = new 
+Error(message);
+              ^
+
+Error: Cannot find module 
+'./routes/auth'
+Require stack:
+- C:\Users\DHRUV\Downloads
+\prism\api-gateway\src\rou
+tes\identity.ts
+- C:\Users\DHRUV\Downloads
+\prism\api-gateway\src\ind
+ex.ts
+    at node:internal/modul
+es/cjs/loader:1456:15
+    at nextResolveSimple (
+C:\Users\DHRUV\Downloads\p
+rism\api-gateway\node_modu
+les\tsx\dist\register-D46f
+vsV_.cjs:4:1004)
+    at C:\Users\DHRUV\Down
+loads\prism\api-gateway\no
+de_modules\tsx\dist\regist
+er-D46fvsV_.cjs:3:2630
+    at C:\Users\DHRUV\Down
+loads\prism\api-gateway\no
+de_modules\tsx\dist\regist
+er-D46fvsV_.cjs:3:1542
+    at resolveTsPaths (C:\
+Users\DHRUV\Downloads\pris
+m\api-gateway\node_modules
+\tsx\dist\register-D46fvsV
+_.cjs:4:760)
+    at C:\Users\DHRUV\Down
+loads\prism\api-gateway\no
+de_modules\tsx\dist\regist
+er-D46fvsV_.cjs:4:1102
+    at m._resolveFilename 
+(file:///C:/Users/DHRUV/Do
+wnloads/prism/api-gateway/
+node_modules/tsx/dist/regi
+ster-B7jrtLTO.mjs:1:789)
+    at defaultResolveImpl 
+(node:internal/modules/cjs
+/loader:1066:19)
+    at 
+resolveForCJSWithHooks (no
+de:internal/modules/cjs/lo
+ader:1071:22)
+    at Module._load (node:
+internal/modules/cjs/loade
+r:1242:25) {
+  code: 
+'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\DHRUV\\Dow
+nloads\\prism\\api-gateway
+\\src\\routes\\identity.ts
+',
+    'C:\\Users\\DHRUV\\Dow
+nloads\\prism\\api-gateway
+\\src\\index.ts'
+  ]
+}
+
+Node.js v24.14.0

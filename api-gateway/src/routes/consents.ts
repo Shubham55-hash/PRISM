@@ -13,7 +13,13 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
       where: { userId: req.user!.userId },
       orderBy: { grantedAt: 'desc' },
     });
-    res.json({ success: true, data: consents });
+    const now = new Date();
+    const enriched = consents.map(c => ({
+      ...c,
+      isExpired: new Date(c.expiresAt) < now,
+      allowedFields: c.allowedFields ? c.allowedFields.split(',') : [],
+    }));
+    res.json({ success: true, data: enriched });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -47,7 +53,16 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response): Promise<
       institutionName 
     });
 
-    res.status(201).json({ success: true, message: 'Consent created successfully', data: consent });
+    const now = new Date();
+    res.status(201).json({
+      success: true,
+      message: 'Consent created successfully',
+      data: {
+        ...consent,
+        isExpired: new Date(consent.expiresAt) < now,
+        allowedFields: consent.allowedFields ? consent.allowedFields.split(',') : [],
+      },
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
