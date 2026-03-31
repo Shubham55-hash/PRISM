@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { FileText, Search, Filter, Download, Eye, MoreVertical, CheckCircle2, Clock, Trash2, Loader, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApi } from '../hooks/useApi';
-import { documentsApi } from '../api/documents';
+import { getDocuments, uploadDocument, verifyDocument, deleteDocument, getDownloadUrl } from '../api/documents';
 import { BASE_URL } from '../api/client';
 
 const TYPE_COLORS: Record<string, string> = {
@@ -25,7 +25,7 @@ export function DocumentsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data, loading, refetch } = useApi(
-    () => documentsApi.list({ search: search || undefined, type: typeFilter || undefined, page }),
+    () => getDocuments({ search: search || undefined, type: typeFilter || undefined, page }),
     [search, typeFilter, page]
   );
 
@@ -35,7 +35,7 @@ export function DocumentsPage() {
     setUploading(true);
     setUploadError('');
     try {
-      await documentsApi.upload(file);
+      await uploadDocument(file);
       refetch();
     } catch (err: any) {
       setUploadError(err.message);
@@ -48,7 +48,7 @@ export function DocumentsPage() {
   const handleVerify = async (id: string) => {
     setVerifyingId(id);
     try {
-      await documentsApi.verify(id);
+      await verifyDocument(id);
       refetch();
     } finally {
       setVerifyingId(null);
@@ -57,7 +57,7 @@ export function DocumentsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this document?')) return;
-    await documentsApi.delete(id);
+    await deleteDocument(id);
     refetch();
   };
 
@@ -65,7 +65,7 @@ export function DocumentsPage() {
     try {
       const token = localStorage.getItem('prism_token');
       // Ask backend for the download URL; then open in a new tab
-      const res = await documentsApi.getDownloadUrl(id);
+      const res = await getDownloadUrl(id);
       if (res.downloadUrl) {
         // Relative URL from backend — prepend BASE_URL
         const url = res.downloadUrl.startsWith('http') ? res.downloadUrl : `${BASE_URL}${res.downloadUrl}`;

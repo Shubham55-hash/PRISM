@@ -2,7 +2,7 @@ import React from 'react';
 import { ArrowRight, CheckCircle2, File, UserCheck, History, Shield, Key } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useApi } from '../hooks/useApi';
-import { activityApi, Activity } from '../api/activity';
+import { getActivity, Activity } from '../api/activity';
 
 const ICONS: Record<string, React.ElementType> = {
   verification: UserCheck,
@@ -14,7 +14,7 @@ const ICONS: Record<string, React.ElementType> = {
 };
 
 export function VerificationHistory() {
-  const { data, loading } = useApi(() => activityApi.list({ type: 'verification', limit: 4 }), []);
+  const { data, loading } = useApi(() => getActivity({ type: 'verification', limit: 4 }), []);
   const logs = data?.activities || [];
 
   return (

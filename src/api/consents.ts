@@ -17,12 +17,10 @@ export interface Consent {
   isExpired: boolean;
 }
 
-export const consentsApi = {
-  list: (status?: string) => api.get<Consent[]>(`/api/consents${status ? '?status=' + status : ''}`),
-  create: (data: { institutionName: string; purpose: string; accessTier?: number; allowedFields?: string[]; expiryDays?: number; institutionLogoUrl?: string }) =>
-    api.post<{ message: string; consent: Consent }>('/api/consents', data),
-  getById: (id: string) => api.get<Consent & { auditLog: any[] }>(`/api/consents/${id}`),
-  revoke: (id: string) => api.delete<{ message: string }>(`/api/consents/${id}`),
-  extend: (id: string, additionalDays?: number) => api.post(`/api/consents/${id}/extend`, { additionalDays }),
-  getAuditLog: () => api.get<any[]>('/api/consents/audit-log'),
-};
+export const getConsents = (status?: string) => api.get<Consent[]>('/api/consents', { params: { status: status || undefined } }).then(res => res.data);
+export const createConsent = (data: { institutionName: string; purpose: string; accessTier?: number; allowedFields?: string[]; expiryDays?: number; institutionLogoUrl?: string }) =>
+  api.post<{ message: string; consent: Consent }>('/api/consents', data).then(res => res.data);
+export const getConsentById = (id: string) => api.get<Consent & { auditLog: any[] }>(`/api/consents/${id}`).then(res => res.data);
+export const revokeConsent = (id: string) => api.delete<{ message: string }>(`/api/consents/${id}`).then(res => res.data);
+export const extendConsent = (id: string, additionalDays?: number) => api.post(`/api/consents/${id}/extend`, { additionalDays }).then(res => res.data);
+export const getConsentAuditLog = () => api.get<any[]>('/api/consents/audit-log').then(res => res.data);

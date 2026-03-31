@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, ExternalLink, Clock, Loader, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApi } from '../hooks/useApi';
-import { consentsApi, Consent } from '../api/consents';
+import { getConsents, revokeConsent, Consent } from '../api/consents';
 
 const TIER_LABEL: Record<number, string> = {
   1: 'Partial Access (Tier 1)',
@@ -11,14 +11,14 @@ const TIER_LABEL: Record<number, string> = {
 };
 
 export function ConsentsPage() {
-  const { data: consents, loading, refetch } = useApi(() => consentsApi.list(), []);
+  const { data: consents, loading, refetch } = useApi(() => getConsents(), []);
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
   const handleRevoke = async (id: string, name: string) => {
     if (!confirm(`Revoke access for ${name}? This is immediate and cannot be undone.`)) return;
     setRevokingId(id);
     try {
-      await consentsApi.revoke(id);
+      await revokeConsent(id);
       refetch();
     } finally {
       setRevokingId(null);

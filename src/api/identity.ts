@@ -37,10 +37,10 @@ export interface TrustScore {
 }
 
 export const identityApi = {
-  getIdentity: () => api.get<Identity>('/api/identity'),
-  updateIdentity: (data: Partial<Identity>) => api.put<{ message: string; user: Identity }>('/api/identity', data),
-  getPrismId: () => api.get<PrismIdCard>('/api/identity/prism-id'),
-  getTrustScore: () => api.get<TrustScore>('/api/identity/trust-score'),
-  linkAadhaar: (aadhaarNumber: string) => api.post('/api/identity/link-aadhaar', { aadhaarNumber }),
-  linkAbha: (abhaId: string) => api.post('/api/identity/link-abha', { abhaId }),
+  getIdentity: () => api.get<Identity>('/api/identity').then(res => res.data),
+  updateIdentity: (data: Partial<Identity>) => api.put<{ message: string; user: Identity }>('/api/identity', data).then(res => res.data),
+  getPrismId: () => api.get<PrismIdCard>('/api/identity/prism-id').then(res => res.data),
+  getTrustScore: () => api.get<TrustScore>('/api/identity/trust-score').then(res => res.data),
+  linkAadhaar: (aadhaarNumber: string) => api.post('/api/identity/link-aadhaar', { aadhaarNumber }).then(res => res.data),
+  linkAbha: (abhaId: string) => api.post('/api/identity/link-abha', { abhaId }).then(res => res.data),
 };

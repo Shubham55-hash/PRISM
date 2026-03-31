@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Clock, Shield, Key, FileText, UserCheck, Search, Filter, Loader } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useApi } from '../hooks/useApi';
-import { activityApi, Activity } from '../api/activity';
+import { getActivity, Activity } from '../api/activity';
 
 const ICONS: Record<string, React.ElementType> = {
   verification: UserCheck,
@@ -20,7 +20,7 @@ export function ActivityPage() {
   const [page, setPage] = useState(1);
   
   const { data, loading } = useApi(
-    () => activityApi.list({ type: typeFilter || undefined, page, search: search || undefined }),
+    () => getActivity({ type: typeFilter || undefined, page, search: search || undefined }),
     [typeFilter, page, search]
   );
   

@@ -1,0 +1,5 @@
+﻿
+> react-example@0.0.0 lint
+> tsc --noEmit
+
+src/components/SuggestionBanner.tsx(13,49): error TS2339: Property 'length' does not exist on type 'AxiosResponse<any[], any, {}>'.

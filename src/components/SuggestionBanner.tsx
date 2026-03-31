@@ -7,8 +7,8 @@ import api from '../api/client';
 export function SuggestionBanner() {
   const [closed, setClosed] = useState(false);
   
-  const { data: suggestions, refetch, loading: loadingSuggestions } = useApi(() => api.get<any[]>('/api/assistant/suggestions'), []);
-  const { mutate, loading: preparing } = useApiMutation((stage: string) => api.post(`/api/assistant/bundle/${stage}`));
+  const { data: suggestions, refetch, loading: loadingSuggestions } = useApi(() => api.get<any[]>('/api/assistant/suggestions').then(res => res.data), []);
+  const { mutate, loading: preparing } = useApiMutation((stage: string) => api.post(`/api/assistant/bundle/${stage}`).then(res => res.data));
 
   const suggestion = suggestions && suggestions.length > 0 ? suggestions[0] : null;
 

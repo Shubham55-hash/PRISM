@@ -4,7 +4,9 @@ import { Shield, Eye, EyeOff, Loader } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('arjun.v@prism.io');
   const [password, setPassword] = useState('prism2024');
   const [showPass, setShowPass] = useState(false);
@@ -16,9 +18,13 @@ export function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      await login(email, password);
+      if (isRegistering) {
+        await register({ fullName, email, password });
+      } else {
+        await login(email, password);
+      }
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      setError(err.message || 'Authentication failed');
     } finally {
       setLoading(false);
     }
@@ -48,14 +54,32 @@ export function LoginPage() {
                 </div>
                 <span className="text-xl font-bold font-headline tracking-widest">PRISM</span>
               </div>
-              <h1 className="text-3xl font-headline font-extrabold leading-tight">Welcome back</h1>
-              <p className="text-[#A0855A]/80 text-sm mt-2">Sign in to your digital identity ecosystem</p>
+              <h1 className="text-3xl font-headline font-extrabold leading-tight">
+                {isRegistering ? 'Create Account' : 'Welcome back'}
+              </h1>
+              <p className="text-[#A0855A]/80 text-sm mt-2">
+                {isRegistering ? 'Join the digital identity ecosystem' : 'Sign in to your digital identity ecosystem'}
+              </p>
             </div>
           </div>
 
           {/* Form */}
           <div className="p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
+              {isRegistering && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#705831]">Full Name</label>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
+                    className="w-full bg-[#fef9f1] border border-[#705831]/10 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 ring-[#705831]/20 transition-all"
+                    placeholder="Arjun V"
+                    required={isRegistering}
+                  />
+                </div>
+              )}
+
               <div className="space-y-2">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-[#705831]">Email Address</label>
                 <input
@@ -98,14 +122,29 @@ export function LoginPage() {
                 className="w-full bg-[#705831] text-white py-4 rounded-xl font-bold text-sm tracking-wide hover:bg-[#5d4828] transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
               >
                 {loading ? <Loader className="w-4 h-4 animate-spin" /> : null}
-                {loading ? 'Signing In…' : 'Sign In to PRISM'}
+                {loading ? 'Processing…' : (isRegistering ? 'Create Account' : 'Sign In to PRISM')}
               </button>
             </form>
 
-            <div className="mt-6 p-4 bg-[#fef9f1] rounded-xl border border-[#705831]/10">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#705831]/60 mb-2">Demo Credentials</p>
-              <p className="text-xs text-[#705831]/80 font-medium">arjun.v@prism.io / prism2024</p>
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRegistering(!isRegistering);
+                  setError('');
+                }}
+                className="text-sm text-[#705831] font-medium hover:underline focus:outline-none"
+              >
+                {isRegistering ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
+              </button>
             </div>
+
+            {!isRegistering && (
+              <div className="mt-6 p-4 bg-[#fef9f1] rounded-xl border border-[#705831]/10">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#705831]/60 mb-2">Demo Credentials</p>
+                <p className="text-xs text-[#705831]/80 font-medium">arjun.v@prism.io / prism2024</p>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>

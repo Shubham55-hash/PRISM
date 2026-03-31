@@ -7,13 +7,13 @@ import { Folder, Key, CircleAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useApi } from '../hooks/useApi';
 import { identityApi } from '../api/identity';
-import { analyticsApi } from '../api/analytics';
+import { getSummary } from '../api/analytics';
 import { useAuth } from '../context/AuthContext';
 
 export function DashboardPage() {
   const { user } = useAuth();
   const { data: identity } = useApi(() => identityApi.getIdentity(), []);
-  const { data: stats } = useApi(() => analyticsApi.getDashboardStats(), []);
+  const { data: stats } = useApi(() => getSummary(), []);
   const { data: trustScore } = useApi(() => identityApi.getTrustScore(), []);
 
   const displayName = identity?.displayName || user?.displayName || 'there';

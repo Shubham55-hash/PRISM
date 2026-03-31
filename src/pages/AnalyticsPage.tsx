@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { TrendingUp, Shield, Users, FileText, Loader } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
-import { analyticsApi } from '../api/analytics';
+import { getTrustHistory, getVerificationVelocity, getDataDistribution, getNetworkReach, getInsights } from '../api/analytics';
 
 const ICONS: Record<string, React.ElementType> = {
   security: Shield,
@@ -15,11 +15,11 @@ const ICONS: Record<string, React.ElementType> = {
 };
 
 export function AnalyticsPage() {
-  const { data: trustData } = useApi(() => analyticsApi.getTrustTrend(), []);
-  const { data: usageData } = useApi(() => analyticsApi.getVerificationVelocity(), []);
-  const { data: categoryData } = useApi(() => analyticsApi.getDataDistribution(), []);
-  const { data: network } = useApi(() => analyticsApi.getNetworkReach(), []);
-  const { data: insights } = useApi(() => analyticsApi.getInsights(), []);
+  const { data: trustData } = useApi(() => getTrustHistory(), []);
+  const { data: usageData } = useApi(() => getVerificationVelocity(), []);
+  const { data: categoryData } = useApi(() => getDataDistribution(), []);
+  const { data: network } = useApi(() => getNetworkReach(), []);
+  const { data: insights } = useApi(() => getInsights(), []);
 
   return (
     <div className="space-y-8">

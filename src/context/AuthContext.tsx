@@ -16,6 +16,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (data: any) => Promise<void>;
   logout: () => void;
 }
 
@@ -26,11 +27,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(localStorage.getItem('prism_token'));
   const [isLoading, setIsLoading] = useState(!!localStorage.getItem('prism_token'));
 
-  // Auto-login with stored token
   useEffect(() => {
     if (token) {
-      api.get<User>('/api/identity')
-        .then(identity => setUser(identity as any))
+      api.get<any>('/api/auth/me')
+        .then(res => setUser(res.data.data.user))
         .catch(() => {
           localStorage.removeItem('prism_token');
           setToken(null);
@@ -39,14 +39,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       setIsLoading(false);
     }
-  }, []);
+  }, [token]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await api.post<{ accessToken: string; refreshToken: string; user: User }>('/api/auth/login', { email, password });
-    localStorage.setItem('prism_token', res.accessToken);
-    localStorage.setItem('prism_refresh', res.refreshToken);
-    setToken(res.accessToken);
-    setUser(res.user);
+    const res = await api.post<any>('/api/auth/login', { email, password });
+    const { accessToken, refreshToken, user } = res.data.data;
+    localStorage.setItem('prism_token', accessToken);
+    if (refreshToken) localStorage.setItem('prism_refresh', refreshToken);
+    setToken(accessToken);
+    setUser(user);
+  }, []);
+
+  const register = useCallback(async (data: any) => {
+    const res = await api.post<any>('/api/auth/register', data);
+    const { accessToken, refreshToken, user } = res.data.data;
+    localStorage.setItem('prism_token', accessToken);
+    if (refreshToken) localStorage.setItem('prism_refresh', refreshToken);
+    setToken(accessToken);
+    setUser(user);
   }, []);
 
   const logout = useCallback(() => {
@@ -58,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated: !!user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isAuthenticated: !!user, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
