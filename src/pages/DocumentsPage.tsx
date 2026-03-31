@@ -65,15 +65,13 @@ export function DocumentsPage() {
     try {
       const token = localStorage.getItem('prism_token');
       // Ask backend for the download URL; then open in a new tab
-      const res = await getDownloadUrl(id);
+      const res = await documentsApi.getDownloadUrl(id);
       if (res.downloadUrl) {
         // Relative URL from backend — prepend BASE_URL
         const url = res.downloadUrl.startsWith('http') ? res.downloadUrl : `${BASE_URL}${res.downloadUrl}`;
         window.open(url, '_blank');
       }
     } catch {
-      // Fallback: open direct download endpoint in new tab with auth header not possible,
-      // so open via anchor — user will see JSON for seeded docs, actual file for uploads
       window.open(`${BASE_URL}/api/documents/${id}/download`, '_blank');
     }
   };

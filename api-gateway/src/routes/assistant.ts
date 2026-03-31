@@ -4,101 +4,103 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
-const BUNDLE_TEMPLATES: Record<string, { stage: string; title: string; description: string; docs: string[]; confidence: number }> = {
-  job_search: {
-    stage: 'job_search',
-    title: 'Job Application Bundle',
-    description: 'You appear to be entering the job market. PRISM can auto-prepare your employment credential pack.',
-    docs: ['degree_certificate', 'aadhaar', 'pan', 'photo', 'address_proof'],
-    confidence: 0.87,
-  },
-  home_loan: {
-    stage: 'home_loan',
-    title: 'Home Loan Application',
-    description: 'Bank statements and income proof detected. Ready to bundle your home loan documents.',
-    docs: ['income_proof', 'bank_statements_6mo', 'aadhaar', 'pan', 'photo'],
-    confidence: 0.82,
-  },
-  medical: {
-    stage: 'medical',
-    title: 'Medical Emergency Kit',
-    description: 'Your ABHA card and insurance policy are ready for instant hospital access.',
-    docs: ['aadhaar', 'abha_card', 'insurance_policy', 'medical_history'],
-    confidence: 0.91,
-  },
-};
-
-// GET /api/assistant/suggestions
-router.get('/suggestions', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+// POST /api/assistant/suggest
+router.post('/suggest', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const predictions = await prisma.lifeStagePrediction.findMany({
-      where: { userId: req.user!.userId, isActioned: false },
-      orderBy: { confidence: 'desc' },
-      take: 3,
+    const userId = req.user!.userId;
+    const documents = await prisma.document.findMany({ 
+      where: { userId, isVerified: true },
+      select: { name: true, documentType: true }
     });
-    if (predictions.length > 0) {
-      res.json(predictions.map(p => ({
-        id: p.id,
-        stage: p.predictedStage,
-        title: p.title,
-        description: p.description,
-        confidence: p.confidence,
-        suggestedBundle: p.suggestedBundle ? JSON.parse(p.suggestedBundle) : [],
-      })));
+    const consents = await prisma.consent.findMany({ 
+      where: { userId, status: 'active' },
+      select: { institutionName: true, purpose: true }
+    });
+
+    const context = `Verified Documents: ${documents.map(d => d.documentType || d.name).join(', ') || 'None'}. Active Consents: ${consents.map(c => c.institutionName).join(', ') || 'None'}.`;
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      res.json({
+        success: true,
+        data: {
+          suggestion: "Mock suggestion: Prepare your Unified Medical Profile package based on your recent health records.",
+          confidence: 0.88
+        }
+      });
       return;
     }
-    // Generate a contextual suggestion from activity
-    const recentDocs = await prisma.document.findMany({
-      where: { userId: req.user!.userId },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-      select: { documentType: true, name: true },
-    });
-    const hasFinancial = recentDocs.some(d => d.documentType === 'financial');
-    const hasEducation = recentDocs.some(d => d.documentType === 'education');
-    const template = hasFinancial ? BUNDLE_TEMPLATES.home_loan : hasEducation ? BUNDLE_TEMPLATES.job_search : BUNDLE_TEMPLATES.job_search;
 
-    res.json([{
-      id: 'auto-suggestion',
-      stage: template.stage,
-      title: template.title,
-      description: template.description,
-      confidence: template.confidence,
-      suggestedBundle: template.docs,
-    }]);
-  } catch (err: any) { res.status(500).json({ error: err.message }); }
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { 
+            role: 'system', 
+            content: "You are PRISM's Predictive Life Assistant. Based on the user's verified documents and life stage, suggest the next credential bundle they should prepare. Be concise and actionable." 
+          },
+          { role: 'user', content: context }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API Error: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    const suggestionContent = result.choices[0]?.message?.content || "Gather your financial documents.";
+
+    res.json({
+      success: true,
+      data: {
+        suggestion: suggestionContent,
+        confidence: 0.92 // Mocked confidence
+      }
+    });
+
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
-// POST /api/assistant/bundle/:suggestion
-router.post('/bundle/:suggestion', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+// POST /api/assistant/predict-stage
+router.post('/predict-stage', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { suggestion } = req.params;
-    const template = BUNDLE_TEMPLATES[suggestion] || BUNDLE_TEMPLATES.job_search;
-    const userDocs = await prisma.document.findMany({
-      where: { userId: req.user!.userId },
-      select: { id: true, name: true, documentType: true, isVerified: true },
-    });
-    // Mark prediction as actioned if it exists
-    await prisma.lifeStagePrediction.updateMany({
-      where: { userId: req.user!.userId, predictedStage: suggestion },
-      data: { isActioned: true },
-    });
-    await prisma.activityLog.create({
+    const userId = req.user!.userId;
+    const documents = await prisma.document.findMany({ where: { userId } });
+
+    let predictedStage = 'early_career';
+    let title = 'Career Building';
+    let description = 'Based on your recent documents, you appear to be building your employment portfolio.';
+    const confidence = 0.85;
+
+    if (documents.some(d => d.documentType === 'financial')) {
+        predictedStage = 'financial_maturity';
+        title = 'Financial Independence';
+        description = 'Your documentation indicates preparation for major financial milestones, like loans or investments.';
+    }
+
+    const prediction = await prisma.lifeStagePrediction.create({
       data: {
-        userId: req.user!.userId,
-        eventType: 'document',
-        title: `Credential Bundle Prepared`,
-        description: `${template.title} bundle auto-prepared by PRISM`,
-      },
+        userId,
+        predictedStage,
+        title,
+        description,
+        confidence,
+        suggestedBundle: JSON.stringify(['identity', 'financial'])
+      }
     });
-    res.json({
-      bundleName: template.title,
-      stage: suggestion,
-      matchedDocuments: userDocs.filter(d => template.docs.some(t => d.documentType?.includes(t.split('_')[0]))),
-      missingDocuments: template.docs.filter(t => !userDocs.some(d => d.documentType?.includes(t.split('_')[0]))),
-      readyForSharing: true,
-    });
-  } catch (err: any) { res.status(500).json({ error: err.message }); }
+
+    res.status(201).json({ success: true, message: 'Life stage predicted successfully', data: prediction });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 export default router;

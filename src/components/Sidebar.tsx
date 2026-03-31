@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -21,6 +22,7 @@ const navItems = [
 
 export function Sidebar() {
   const location = useLocation();
+  const { logout } = useAuth();
 
   return (
     <aside className="h-screen w-64 fixed left-0 top-0 overflow-y-auto bg-prism-sidebar shadow-2xl shadow-prism-sidebar/20 flex flex-col py-8 z-50">
@@ -55,10 +57,10 @@ export function Sidebar() {
           <CircleHelp className="w-4 h-4" />
           <span className="font-headline text-xs font-medium tracking-tight">Help</span>
         </a>
-        <a href="#" className="flex items-center gap-3 py-2 text-inverse-on-surface/50 hover:text-inverse-on-surface transition-colors">
+        <button onClick={logout} className="flex items-center gap-3 py-2 text-inverse-on-surface/50 hover:text-inverse-on-surface transition-colors">
           <LogOut className="w-4 h-4" />
           <span className="font-headline text-xs font-medium tracking-tight">Logout</span>
-        </a>
+        </button>
       </div>
     </aside>
   );
