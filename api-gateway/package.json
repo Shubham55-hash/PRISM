@@ -7,7 +7,10 @@
     "start": "tsx src/index.ts",
     "db:migrate": "prisma migrate dev --name init",
     "db:seed": "tsx prisma/seed.ts",
-    "db:setup": "prisma migrate dev --name init && tsx prisma/seed.ts"
+    "db:setup": "prisma migrate dev --name init && tsx prisma/seed.ts",
+    "db:force-demo": "tsx force-demo.ts",
+    "db:check-demo": "tsx check-demo.ts",
+    "db:reset-profile": "tsx reset-profile.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.81.0",

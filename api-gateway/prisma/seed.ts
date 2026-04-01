@@ -22,23 +22,23 @@ async function main() {
   const passwordHash = await bcrypt.hash('prism2024', 12);
   const user = await prisma.user.create({
     data: {
-      prismId: 'PR-992-001-X',
-      fullName: 'Arjun Varma',
-      displayName: 'Arjun',
-      email: 'arjun.v@prism.io',
-      phone: '+91 98765 43210',
+      prismId: 'PR-000-DEMO-X',
+      fullName: 'Shubham Alpesh Shah',
+      displayName: 'Shubham',
+      email: 'demo@prism.io',
+      phone: '+91 00000 00000',
       passwordHash,
-      dateOfBirth: '1992-10-17',
-      addressLine: 'Flat 4B, Sea Breeze Residency, Hill Road',
-      city: 'Bandra West, Mumbai',
+      dateOfBirth: '1990-01-01',
+      addressLine: '123 Innovation Way, Tech Park',
+      city: 'Mumbai',
       state: 'MH',
-      abhaId: 'ABHA-MH-1992-ARJ-77',
+      abhaId: 'ABHA-DEMO-0000-00',
       digilockerLinked: true,
       biometricStatus: 'active',
       securityTier: 3,
-      trustScore: 92,
-      pendingRequests: 3,
-      profilePhotoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+      trustScore: 95,
+      pendingRequests: 0,
+      profilePhotoUrl: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?auto=format&fit=crop&q=80&w=200',
     },
   });
   console.log(`✅ Created user: ${user.fullName} (${user.prismId})`);
@@ -77,13 +77,13 @@ async function main() {
     const docDate = new Date(now);
     docDate.setDate(docDate.getDate() - doc.daysAgo);
     const vcData = doc.isVerified ? {
-      vcCredentialId: `vc:prism:PR-992-001-X:${uuidv4().slice(0, 8)}`,
+      vcCredentialId: `vc:prism:PR-000-DEMO-X:${uuidv4().slice(0, 8)}`,
       vcIssuedAt: docDate,
       vcExpiresAt: new Date(docDate.getFullYear() + 2, docDate.getMonth(), docDate.getDate()),
       vcProof: JSON.stringify({
         type: 'Ed25519Signature2020',
         created: docDate.toISOString(),
-        verificationMethod: 'did:prism:PR-992-001-X#key-1',
+        verificationMethod: 'did:prism:PR-000-DEMO-X#key-1',
         jws: Buffer.from(`vc:${doc.name}:${docDate.getTime()}`).toString('base64'),
       }),
     } : {};
@@ -99,9 +99,12 @@ async function main() {
         isVerified: doc.isVerified,
         uploadSource: doc.uploadSource,
         ocrExtractedFields: JSON.stringify({
-          name: { value: 'Arjun Varma', confidence: 0.98 },
-          dob: { value: '17-10-1992', confidence: 0.96 },
-          documentNumber: { value: `DOC-${Math.floor(Math.random() * 90000000 + 10000000)}`, confidence: 0.94 },
+          fullName: 'Shubham Alpesh Shah',
+          dateOfBirth: '05 OCT 2006',
+          aadhaarNumber: 'xxxxxxxx9092',
+          panNumber: 'ABCPS1234F',
+          gender: 'Male',
+          dob: '05-10-2006'
         }),
         createdAt: docDate,
         ...vcData,
@@ -230,9 +233,9 @@ async function main() {
   console.log(`✅ Created life stage prediction`);
 
   console.log('\n🎉 Seed complete! Demo credentials:');
-  console.log('   Email:    arjun.v@prism.io');
+  console.log('   Email:    demo@prism.io');
   console.log('   Password: prism2024');
-  console.log('   PRISM ID: PR-992-001-X\n');
+  console.log('   PRISM ID: PR-000-DEMO-X\n');
 }
 
 main()

@@ -61,6 +61,7 @@ import { initWebSocket } from './utils/websocket';
 initWebSocket(server);
 
 // ── Start ────────────────────────────────────────────────────────────────────
+// [PRISM] Core System Initialized - Identity Enforced: Shubham Alpesh Shah
 server.listen(PORT, () => {
   console.log(`\n🔷 PRISM API Gateway running on http://localhost:${PORT}`);
   console.log(`🔌 WebSocket server active on ws://localhost:${PORT}`);
