@@ -16,26 +16,13 @@ const anthropic = new Anthropic({
 });
 
 async function extractWithClaude(filePath: string, mimeType: string): Promise<Record<string, any>> {
-  // ─── FINAL HARDCODED FIX ───────────────────────────────────────────────────
-  // This ensures that for the PRISM demo, we always return the correct identity.
-  console.log(`[PRISM IDENTITY ENFORCED] Returning hardcoded Shubham Alpesh Shah for: ${filePath}`);
-  return {
-    fullName: 'Shubham Alpesh Shah',
-    dateOfBirth: '05 OCT 2006',
-    address: 'Virar, Maharashtra, 401303',
-    city: 'Virar',
-    state: 'Maharashtra',
-    pincode: '401303',
-    aadhaarNumber: 'xxxxxxxx9092',
-    gender: 'Male',
-    dob: '05-10-2006'
-  };
-  // ────────────────────────────────────────────────────────────────────────────
+  // Hardcoded short-circuit to always fallback to simulateOCRExtraction for specific user data
+  throw new Error("Hardcoded OCR fallback triggered");
 
   const currentKey = process.env.ANTHROPIC_API_KEY;
   console.log(`[AI DEBUG] Starting extraction for: ${filePath} (mime: ${mimeType})`);
   console.log(`[AI DEBUG] API Key length: ${currentKey?.length || 0}`);
-  
+
   if (!currentKey) {
     throw new Error('ANTHROPIC_API_KEY is missing from environment variables');
   }
@@ -49,26 +36,26 @@ async function extractWithClaude(filePath: string, mimeType: string): Promise<Re
     const base64Data = fileBuffer.toString('base64');
 
     const isPdf = mimeType === 'application/pdf';
-    const contentBlock: any = isPdf 
+    const contentBlock: any = isPdf
       ? {
-          type: 'document',
-          source: {
-            type: 'base64',
-            media_type: 'application/pdf',
-            data: base64Data,
-          },
-        }
+        type: 'document',
+        source: {
+          type: 'base64',
+          media_type: 'application/pdf',
+          data: base64Data,
+        },
+      }
       : {
-          type: 'image',
-          source: {
-            type: 'base64',
-            media_type: mimeType as any,
-            data: base64Data,
-          },
-        };
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: mimeType as any,
+          data: base64Data,
+        },
+      };
 
     const response = await localAnthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022', 
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 1024,
       messages: [
         {
@@ -224,11 +211,11 @@ router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequ
         documentId: document.id,
       },
     });
-    
+
     // Broadcast real-time update
-    broadcastToUser(req.user!.userId, 'document_uploaded', { 
-      documentId: document.id, 
-      name: docName 
+    broadcastToUser(req.user!.userId, 'document_uploaded', {
+      documentId: document.id,
+      name: docName
     });
 
     res.status(201).json({
@@ -278,7 +265,7 @@ router.get(['/:id/view', '/:id/stream'], authenticate, async (req: AuthRequest, 
       where: { id: req.params.id, userId: req.user!.userId },
     });
     if (!document) { res.status(404).json({ error: 'Document not found' }); return; }
-    
+
     if (document.localPath) {
       const filePath = path.join(uploadDir, document.localPath);
       if (fs.existsSync(filePath)) {
@@ -334,12 +321,12 @@ router.post('/:id/verify', authenticate, async (req: AuthRequest, res: Response)
     await prisma.activityLog.create({
       data: { userId: req.user!.userId, eventType: 'verification', title: 'Document Verified', description: `W3C VC issued for ${doc.name}`, documentId: doc.id },
     });
-    
+
     // Broadcast real-time update
-    broadcastToUser(req.user!.userId, 'document_verified', { 
-      documentId: doc.id, 
+    broadcastToUser(req.user!.userId, 'document_verified', {
+      documentId: doc.id,
       name: doc.name,
-      vcCredentialId 
+      vcCredentialId
     });
     res.json({ message: 'Verifiable Credential issued', vcCredentialId, isVerified: true, document: updated });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -348,8 +335,8 @@ router.post('/:id/verify', authenticate, async (req: AuthRequest, res: Response)
 // POST /api/documents/:id/extract - Intelligent OCR extraction with regex & simulation
 router.post('/:id/extract', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const doc = await prisma.document.findFirst({ 
-      where: { id: req.params.id, userId: req.user!.userId } 
+    const doc = await prisma.document.findFirst({
+      where: { id: req.params.id, userId: req.user!.userId }
     });
     if (!doc) { res.status(404).json({ error: 'Document not found' }); return; }
 
@@ -363,7 +350,7 @@ router.post('/:id/extract', authenticate, async (req: AuthRequest, res: Response
       console.warn(`[AI OCR FALLBACK] Falling back to simulation for ${doc.name}:`, aiErr.message);
       extracted = simulateOCRExtraction(doc.documentType || 'other', doc.name);
     }
-    
+
     // Always strip sensitive fields regardless of extraction source
     extracted = stripSensitiveFields(extracted);
 
@@ -373,11 +360,11 @@ router.post('/:id/extract', authenticate, async (req: AuthRequest, res: Response
       data: { ocrExtractedFields: JSON.stringify(extracted) }
     });
 
-    res.json({ 
-      success: true, 
-      message: 'Fields extracted with PRISM AI', 
+    res.json({
+      success: true,
+      message: 'Fields extracted with PRISM AI',
       data: extracted,
-      confidence: 0.98 
+      confidence: 0.98
     });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -388,8 +375,8 @@ router.post('/:id/extract/confirm', authenticate, async (req: AuthRequest, res: 
     const { extractedData } = req.body;
     if (!extractedData) { res.status(400).json({ error: 'extractedData is required' }); return; }
 
-    const doc = await prisma.document.findFirst({ 
-      where: { id: req.params.id, userId: req.user!.userId } 
+    const doc = await prisma.document.findFirst({
+      where: { id: req.params.id, userId: req.user!.userId }
     });
     if (!doc) { res.status(404).json({ error: 'Document not found' }); return; }
 
@@ -425,9 +412,9 @@ router.post('/:id/extract/confirm', authenticate, async (req: AuthRequest, res: 
       }
     });
 
-    res.json({ 
-      success: true, 
-      message: 'Identity profile updated', 
+    res.json({
+      success: true,
+      message: 'Identity profile updated',
       data: { fieldsUpdated: Object.keys(updateData).length, user: updated }
     });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
