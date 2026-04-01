@@ -16,9 +16,6 @@ const anthropic = new Anthropic({
 });
 
 async function extractWithClaude(filePath: string, mimeType: string): Promise<Record<string, any>> {
-  // Hardcoded short-circuit to always fallback to simulateOCRExtraction for specific user data
-  throw new Error("Hardcoded OCR fallback triggered");
-
   const currentKey = process.env.ANTHROPIC_API_KEY;
   console.log(`[AI DEBUG] Starting extraction for: ${filePath} (mime: ${mimeType})`);
   console.log(`[AI DEBUG] API Key length: ${currentKey?.length || 0}`);
