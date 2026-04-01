@@ -476,23 +476,6 @@ export function AutofillTestPage() {
             </div>
           )}
 
-          {/* API Reference */}
-          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-5 space-y-3">
-            <h4 className="font-bold text-xs text-on-surface uppercase tracking-widest">API Call Being Made</h4>
-            <pre className="bg-background rounded-lg p-3 text-[10px] font-mono text-secondary overflow-x-auto">
-{`GET /api/autofill/fetch/<token>
-
-Response:
-{
-  "success": true,
-  "data": {
-    "fullName": "John Doe",
-    "email": "john@example.com",
-    ...
-  }
-}`}
-            </pre>
-          </div>
         </div>
       </div>
     </div>

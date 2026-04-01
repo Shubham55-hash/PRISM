@@ -27,7 +27,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('prism_token');
       localStorage.removeItem('prism_refresh');
-      window.location.href = '/login';
+      // If we're not on the login page, then we should redirect to it.
+      // We also check error.config.url to avoid redirecting when it was the login request itself that failed.
+      const isLoginRequest = error.config?.url?.includes('/api/auth/login');
+      if (window.location.pathname !== '/login' && !isLoginRequest) {
+        window.location.href = '/login';
+      }
     }
     const status = error.response?.status || 500;
     const message = (error.response?.data as any)?.message || (error.response?.data as any)?.error || error.message || 'Request failed';

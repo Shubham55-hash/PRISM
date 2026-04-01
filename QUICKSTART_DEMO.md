@@ -23,8 +23,8 @@ npm run dev          # Runs on http://localhost:3000
 
 ### Login Credentials (Demo User)
 ```
-Email: prism@example.com
-Password: prism123
+- **Email:** `demo@prism.io`
+- **Password:** `prism2024`
 ```
 
 ---

@@ -7,7 +7,7 @@ export function LoginPage() {
   const { login, register } = useAuth();
   const [isRegistering, setIsRegistering] = useState(false);
   const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('abc@gmail.com');
+  const [email, setEmail] = useState('demo@prism.io');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('prism2024');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -300,7 +300,7 @@ export function LoginPage() {
             {!isRegistering && (
               <div className="mt-5 p-4 bg-[#fef9f1] rounded-xl border border-[#705831]/10">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#705831]/60 mb-2">Demo Credentials</p>
-                <p className="text-xs text-[#705831]/80 font-medium">abc@gmail.com / prism2024</p>
+                <p className="text-xs text-[#705831]/80 font-medium">demo@prism.io / prism2024</p>
               </div>
             )}
           </div>

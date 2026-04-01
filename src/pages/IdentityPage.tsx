@@ -11,6 +11,7 @@ export function IdentityPage() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<typeof identity>>({});
+  const [fullName, setFullName] = useState('Shubham Alpesh Shah');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
